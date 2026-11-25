@@ -1,5 +1,10 @@
 # يضيف إعدادات الفحص بالخلفية والأيقونة لمشروع الايفون بعد إنشائه
 import plistlib, re, shutil, glob, os
+# رفع أقل إصدار iOS إلى 14 (مطلوب لإضافة الفحص بالخلفية)
+pf = 'ios/App/Podfile'
+t = open(pf).read(); t = re.sub(r"platform :ios, '[\d.]+'", "platform :ios, '14.0'", t); open(pf, 'w').write(t)
+px = 'ios/App/App.xcodeproj/project.pbxproj'
+t = open(px).read(); t = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET = [\d.]+;', 'IPHONEOS_DEPLOYMENT_TARGET = 14.0;', t); open(px, 'w').write(t)
 p = 'ios/App/App/Info.plist'
 with open(p, 'rb') as f: d = plistlib.load(f)
 d['CFBundleDisplayName'] = 'مدير بصمة IBRA'

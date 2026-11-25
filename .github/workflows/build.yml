@@ -39,8 +39,9 @@ jobs:
       - run: npm install
       - run: which pod || sudo gem install cocoapods
       - run: xcodebuild -version
-      - run: npx cap add ios
+      - run: npx cap add ios || true
       - run: python3 ios-patch.py
+      - run: cd ios/App && pod install --repo-update
       - run: npx cap sync ios
       - name: بناء IPA بدون توقيع (يتوقع على الايفون)
         run: |
