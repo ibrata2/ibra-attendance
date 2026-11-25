@@ -29,7 +29,7 @@ jobs:
         with: { name: windows, path: dist/*.exe }
 
   ios:
-    runs-on: macos-14
+    runs-on: macos-latest
     defaults: { run: { working-directory: mobile } }
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +37,8 @@ jobs:
         with: { node-version: 20 }
       - run: cp ../app/logic.js www/logic.js
       - run: npm install
+      - run: which pod || sudo gem install cocoapods
+      - run: xcodebuild -version
       - run: npx cap add ios
       - run: python3 ios-patch.py
       - run: npx cap sync ios
