@@ -56,8 +56,7 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "artifactName": "IBRA-Attendance-Setup-${version}.exe",
-      "runAfterFinish": true,
-      "language": "1025"
+      "runAfterFinish": true
     },
     "afterPack": "build/afterPack.js"
   }

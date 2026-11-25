@@ -13,7 +13,18 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm install
-      - run: npx electron-builder --win nsis --x64 --publish never
+      - run: npx electron-builder --win dir --x64 --publish never
+      - name: بناء المثبّت (NSIS)
+        shell: pwsh
+        run: |
+          $v = node -p "require('./package.json').version"
+          $mk = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (-not $mk) { $mk = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          if (-not (Test-Path $mk)) { choco install nsis -y --no-progress; $mk = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          Push-Location build
+          & $mk /V2 "/DVERSION=$v" installer.nsi
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Pop-Location
       - uses: actions/upload-artifact@v4
         with: { name: windows, path: dist/*.exe }
 
