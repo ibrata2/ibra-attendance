@@ -1,0 +1,64 @@
+{
+  "name": "ibra-attendance",
+  "version": "1.0.3",
+  "description": "بصمة IBRA - حضور وانصراف الموظفين ببصمة الوجه",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "author": "Ibrahim Al-Khazraji (IBRAPROGRAM)",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@vladmandic/face-api": "^1.7.15",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "resedit": "^1.7.2"
+  },
+  "productName": "IBRA Attendance",
+  "build": {
+    "appId": "com.ibraprogram.attendance",
+    "productName": "IBRA Attendance",
+    "copyright": "© IBRAPROGRAM - ابراهيم الخزرجي",
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "executableName": "IBRA-Attendance",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "بصمة IBRA",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "IBRA-Attendance-Setup-${version}.exe",
+      "runAfterFinish": true,
+      "language": "1025"
+    },
+    "afterPack": "build/afterPack.js"
+  }
+}

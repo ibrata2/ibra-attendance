@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; img-src 'self' app: data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' app: https://*.supabase.co https://*.supabase.in; style-src 'self' 'unsafe-inline'; script-src 'self' app: 'unsafe-eval'">
+<title>بصمة IBRA</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="icon.png" alt="">
+    <div><b>بصمة IBRA</b><small>حضور وانصراف الموظفين</small></div>
+  </div>
+  <nav id="nav">
+    <button data-tab="punch" class="active">البصمة</button>
+    <button data-tab="today">لوحة اليوم 🔒</button>
+    <button data-tab="employees">الموظفين 🔒</button>
+    <button data-tab="reports">التقارير 🔒</button>
+    <button data-tab="review">المراجعة 🔒 <span id="reviewBadge" class="badge hidden">0</span></button>
+    <button data-tab="settings">الإعدادات 🔒</button>
+    <button data-tab="about">حول</button>
+  </nav>
+  <div class="status">
+    <span id="syncStatus" class="pill muted">محلي</span>
+    <button id="lockBtn" class="pill hidden" title="قفل الإدارة">🔓 قفل</button>
+  </div>
+</header>
+
+<main>
+  <!-- شاشة البصمة -->
+  <section id="tab-punch" class="tab active">
+    <div class="punch-wrap">
+      <div class="clock-card">
+        <div id="bigClock" class="big-clock">--:--</div>
+        <div id="bigDate" class="big-date"></div>
+        <div id="clockWarn" class="clock-warn hidden">⚠️ وقت الحاسبة غير مؤكد — اتصل بالإنترنت لضبط الوقت</div>
+      </div>
+      <div class="code-card">
+        <label for="codeInput">أدخل الكود الخاص بك</label>
+        <input id="codeInput" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="••••">
+        <div class="keypad" id="keypad"></div>
+        <div class="punch-btns">
+          <button class="btn-in" id="btnIn">تسجيل حضور<small>دخول</small></button>
+          <button class="btn-out" id="btnOut">تسجيل انصراف<small>خروج</small></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-today" class="tab"><div id="todayView"></div></section>
+  <section id="tab-employees" class="tab"><div id="empView"></div></section>
+  <section id="tab-reports" class="tab"><div id="repView"></div></section>
+  <section id="tab-review" class="tab"><div id="reviewView"></div></section>
+  <section id="tab-settings" class="tab"><div id="setView"></div></section>
+  <section id="tab-about" class="tab"><div id="aboutView"></div></section>
+</main>
+
+<!-- نافذة الكاميرا -->
+<div id="camModal" class="overlay hidden">
+  <div class="cam-box">
+    <h2 id="camTitle">التحقق من الوجه</h2>
+    <div class="cam-stage">
+      <video id="camVideo" autoplay muted playsinline></video>
+      <canvas id="camCanvas"></canvas>
+      <div class="cam-ring" id="camRing"></div>
+    </div>
+    <div id="camMsg" class="cam-msg">جاري تشغيل الكاميرا…</div>
+    <div class="cam-progress"><i id="camBar"></i></div>
+    <button id="camCancel" class="btn ghost">إلغاء</button>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="vendor/face-api.js"></script>
+<script src="logic.js"></script>
+<script src="face.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

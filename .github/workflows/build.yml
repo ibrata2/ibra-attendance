@@ -1,0 +1,58 @@
+name: بناء ونشر بصمة IBRA
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install
+      - run: npx electron-builder --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: dist/*.exe }
+
+  ios:
+    runs-on: macos-14
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: cp ../app/logic.js www/logic.js
+      - run: npm install
+      - run: npx cap add ios
+      - run: python3 ios-patch.py
+      - run: npx cap sync ios
+      - name: بناء IPA بدون توقيع (يتوقع على الايفون)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            -archivePath "$PWD/build/App.xcarchive" archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" | tail -20
+          mkdir -p Payload && cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -qry IBRA-Attendance-Manager.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with: { name: ios, path: mobile/IBRA-Attendance-Manager.ipa }
+
+  release:
+    needs: [windows, ios]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out }
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: بصمة IBRA ${{ github.ref_name }}
+          body: |
+            **بصمة IBRA** — حضور وانصراف الموظفين ببصمة الوجه
+            - `IBRA-Attendance-Setup-*.exe` برنامج الحاسبة (ويندوز)
+            - `IBRA-Attendance-Manager.ipa` تطبيق المدير للايفون (يتوقع على الجهاز)
+          files: |
+            out/windows/*.exe
+            out/ios/*.ipa
