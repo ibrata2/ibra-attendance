@@ -652,7 +652,7 @@
           </div>
           <div class="grid g3">
             <div class="field"><label>رابط المشروع (Project URL)</label><input id="cUrl" dir="ltr" value="${esc(c.url || '')}" placeholder="https://xxxx.supabase.co"></div>
-            <div class="field"><label>المفتاح العام (anon public key)</label><input id="cKey" dir="ltr" type="password" value="${esc(c.key || '')}"></div>
+            <div class="field"><label>المفتاح العام (Publishable key — يبدأ بـ sb_publishable أو anon)</label><input id="cKey" dir="ltr" type="password" value="${esc(c.key || '')}"></div>
             <div class="field"><label>كود المحل (نفسه بكل الحاسبات)</label><div class="row"><input id="cWs" dir="ltr" style="flex:1" value="${esc(c.ws || '')}"><button class="btn ghost sm" id="cGen">توليد</button></div></div>
           </div>
           <div class="row" style="margin-top:12px"><button class="btn" id="cTest">اختبار الاتصال وحفظ</button><button class="btn ghost" id="cSync">مزامنة الآن</button><button class="btn ghost" id="cSql">📋 نسخ كود الإعداد (SQL)</button><button class="btn ghost" id="cOff">إلغاء الربط</button>
@@ -663,7 +663,7 @@
               <li>اضغط <b>New project</b>، اكتب أي اسم (مثلاً <span dir="ltr">ibra-attendance</span>) وكلمة مرور، واختار أقرب منطقة (مثلاً Frankfurt)، وانتظر دقيقتين لين يجهز.</li>
               <li>ارجع للبرنامج واضغط زر <b>📋 نسخ كود الإعداد (SQL)</b>.</li>
               <li>بموقع Supabase من القائمة الجانبية افتح <b>SQL Editor</b>، الصق الكود، واضغط <b>Run</b>. لازم تطلع <span dir="ltr">Success</span>.</li>
-              <li>افتح <b>Project Settings ← API</b> (أو زر <b>Connect</b>)، انسخ <b dir="ltr">Project URL</b> والصقه بالخانة الأولى، وانسخ المفتاح <b dir="ltr">anon public</b> والصقه بالخانة الثانية.</li>
+              <li>افتح <b>Project Settings ← API</b> (أو زر <b>Connect</b>)، انسخ <b dir="ltr">Project URL</b> والصقه بالخانة الأولى، وانسخ المفتاح العام (<b dir="ltr">Publishable key</b> يبدأ بـ <span dir="ltr">sb_publishable_</span>، أو <b dir="ltr">anon</b>) والصقه بالخانة الثانية. ⚠️ لا تلصق المفتاح بموقع Supabase.</li>
               <li>اضغط <b>توليد</b> جنب كود المحل، وبعدين <b>اختبار الاتصال وحفظ</b>. إذا طلع <b>✅ متصل ومتزامن</b> خلص الربط، وكل الموظفين والبصمات القديمة تترفع تلقائياً.</li>
               <li><b>للحاسبة الثانية أو الفرع الثاني:</b> نصّب البرنامج، وحط نفس الرابط والمفتاح ونفس كود المحل، واكتب اسم الفرع بقسم "هذه الحاسبة". الموظفين يظهرون تلقائياً.</li>
             </ol></details></div>
@@ -708,7 +708,8 @@
     q('cGen').onclick = () => { q('cWs').value = 'IBRA-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(); };
     q('cSql').onclick = async () => { await navigator.clipboard.writeText(Sync.SQL); toast('تم نسخ كود SQL'); };
     q('cTest').onclick = async () => {
-      const cfg = { url: q('cUrl').value.trim(), key: q('cKey').value.trim(), ws: q('cWs').value.trim() };
+      const cfg = { url: q('cUrl').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key: q('cKey').value.replace(/\s+/g, ''), ws: q('cWs').value.trim() };
+      if (/^sb_secret_/.test(cfg.key)) { q('cMsg').textContent = '❌ هذا المفتاح السري — استخدم المفتاح العام (publishable أو anon)'; return; }
       if (!/^https:\/\/.+/.test(cfg.url) || !cfg.key || !cfg.ws) { q('cMsg').textContent = 'املأ الحقول الثلاثة'; return; }
       q('cMsg').textContent = 'جاري الاختبار…';
       try {

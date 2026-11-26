@@ -39,7 +39,8 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
   function toast(t) { const el = $('toast'); el.textContent = t; el.classList.remove('hidden'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3500); }
 
   // ===== المزامنة =====
-  const H = () => ({ apikey: db.cfg.key, Authorization: 'Bearer ' + db.cfg.key });
+  const authH = (key) => { const h = { apikey: key }; if (/^eyJ/.test(key)) h.Authorization = 'Bearer ' + key; return h; };
+  const H = () => authH(db.cfg.key);
   const base = () => db.cfg.url.replace(/\/+$/, '');
   async function pull(first) {
     if (!db.cfg || busy) return;
@@ -184,7 +185,7 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
       let c; try { c = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6).trim())))); } catch (e) { throw new Error('الكود غير صحيح'); }
       if (!c.url || !c.key || !c.ws) throw new Error('الكود ناقص');
       toast('⏳ جاري الربط…');
-      const t = await fetch(c.url.replace(/\/+$/, '') + '/rest/v1/att_sync?select=id&limit=1', { headers: { apikey: c.key, Authorization: 'Bearer ' + c.key } }).catch(() => null);
+      const t = await fetch(c.url.replace(/\/+$/, '') + '/rest/v1/att_sync?select=id&limit=1', { headers: authH(c.key) }).catch(() => null);
       if (!t) throw new Error('ما كو إنترنت — تأكد من الاتصال وجرب مرة ثانية');
       if (!t.ok) throw new Error('تعذر الاتصال بالسحابة (' + t.status + ')');
       db = Object.assign(blank(), { cfg: c, notify: true }); save();

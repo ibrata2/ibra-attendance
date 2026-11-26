@@ -25,12 +25,16 @@ create trigger att_bump_t before insert or update on att_sync for each row execu
 create or replace function att_now() returns bigint language sql stable as $$
   select (extract(epoch from now()) * 1000)::bigint $$;
 grant usage, select on sequence att_seq to anon, authenticated;
+grant select, insert, update, delete on att_sync to anon, authenticated;
+grant execute on function att_now() to anon, authenticated;
 alter table att_sync enable row level security;
 drop policy if exists att_all on att_sync;
 create policy att_all on att_sync for all to anon, authenticated using (true) with check (true);`;
 
   function cfg() { const c = (App.db.local && App.db.local.cloud) || {}; return c.url && c.key && c.ws ? c : null; }
-  function headers(c, extra) { return Object.assign({ apikey: c.key, Authorization: 'Bearer ' + c.key, 'Content-Type': 'application/json' }, extra || {}); }
+  // المفاتيح الجديدة (sb_publishable_) تنرسل بـ apikey فقط، والقديمة (JWT) بالاثنين
+  function authH(key) { const h = { apikey: key }; if (/^eyJ/.test(key)) h.Authorization = 'Bearer ' + key; return h; }
+  function headers(c, extra) { return Object.assign(authH(c.key), { 'Content-Type': 'application/json' }, extra || {}); }
   const base = (c) => c.url.replace(/\/+$/, '');
 
   function now() {
