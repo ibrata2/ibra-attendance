@@ -2,7 +2,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   let loaded = false, loading = null, stream = null, cancelFlag = false;
-  const THRESH = { low: 0.58, medium: 0.5, high: 0.43 };
+  const THRESH = { low: 0.6, medium: 0.54, high: 0.46 };
 
   async function init() {
     if (loaded) return;
@@ -70,7 +70,7 @@
     return c.toDataURL('image/jpeg', 0.78);
   }
 
-  // التحقق من هوية الموظف
+  // التحقق من هوية الموظف — سريع: يقارن كل لقطة مباشرة، والرمشة اختيارية
   async function verify(emp, opts) {
     cancelFlag = false;
     ui.open(`التحقق من الوجه — ${emp.name}`);
@@ -80,35 +80,39 @@
     const thr = THRESH[opts.strictness] || THRESH.medium;
     const known = (emp.descriptors || []).map(d => Float32Array.from(d));
     const t0 = performance.now();
-    let baseline = 0, closed = false, blinked = !opts.liveness, openDescs = [], goodFrames = 0, evalFrames = 0, best = 9, photo = null;
+    let best = 9, photo = null, hits = 0, maxEar = 0, closed = false, blinked = !opts.liveness, matched = false, lastDesc = null;
+    ui.msg('ضع وجهك داخل الدائرة'); ui.bar(15);
     try {
       while (!cancelFlag) {
-        if (performance.now() - t0 > 40000) return { ok: false, reason: 'timeout', best };
-        const d = await detect(v);
-        const p = placement(d);
-        if (p) { ui.msg(p); ui.ring('warn'); await sleep(60); continue; }
-        // قياس فتح العين للرمشة
-        if (d.ear > baseline * 0.9 || baseline === 0) baseline = baseline === 0 ? d.ear : baseline * 0.85 + d.ear * 0.15;
-        const isOpen = d.ear > baseline * 0.85;
-        if (isOpen && d.score > 0.6) { openDescs.push(d.desc); if (openDescs.length > 5) openDescs.shift(); if (!photo || d.score > 0.8) photo = snapshot(v); }
-        if (!blinked) {
-          if (d.ear < baseline * 0.72) closed = true;
-          else if (closed && d.ear > baseline * 0.86) { blinked = true; }
-          ui.msg(closed ? 'افتح عينك…' : (performance.now() - t0 > 12000 ? '👁️ ارمش ببطء (غمّض عينك ثانية وافتحها)' : '👁️ ارمش بعينك مرة واحدة')); ui.ring(''); ui.bar(30);
-          await sleep(30); continue;
+        const el = performance.now() - t0;
+        if (el > 15000) return { ok: false, reason: matched ? 'noblink' : (best < 9 ? 'nomatch' : 'timeout'), best, photo };
+        const d = await detectLoose(v);
+        if (!d) { ui.msg('ضع وجهك داخل الدائرة'); ui.ring('warn'); hits = 0; await sleep(40); continue; }
+        if (d.size < 0.16) { ui.msg('اقترب من الكاميرا قليلاً'); ui.ring('warn'); await sleep(40); continue; }
+        if (!photo || d.score > 0.75) photo = snapshot(v);
+        // المطابقة: أقرب مسافة لأي صورة مسجلة، مع متوسط آخر لقطتين
+        const probe = lastDesc ? avg2(lastDesc, d.desc) : d.desc; lastDesc = d.desc;
+        const dmin = Math.min(...known.map(k => euclid(k, d.desc)), ...known.map(k => euclid(k, probe)));
+        best = Math.min(best, dmin);
+        if (dmin < thr) { hits++; ui.ring('ok'); } else { hits = Math.max(0, hits - 1); ui.ring(''); }
+        if (hits >= 1) matched = true;
+        if (opts.liveness && !blinked) {
+          maxEar = Math.max(maxEar * 0.995, d.ear);
+          if (d.ear < maxEar * 0.78) closed = true; else if (closed && d.ear > maxEar * 0.88) blinked = true;
         }
-        if (openDescs.length < 3) { ui.msg('ثبّت وجهك…'); ui.bar(50); await sleep(30); continue; }
-        ui.msg('جاري التحقق…'); ui.bar(70 + goodFrames * 15);
-        const probe = meanDesc(openDescs.slice(-3));
-        const dmin = Math.min(...known.map(k => euclid(k, probe)));
-        best = Math.min(best, dmin); evalFrames++;
-        if (dmin < thr) { goodFrames++; ui.ring('ok'); if (goodFrames >= 2) { ui.bar(100); ui.msg('✅ تم التحقق'); photo = snapshot(v); await sleep(350); return { ok: true, photo, distance: dmin }; } }
-        else { goodFrames = 0; ui.ring('bad'); }
-        if (evalFrames >= 25) return { ok: false, reason: 'nomatch', best, photo };
-        await sleep(40);
+        if (matched && blinked) { ui.bar(100); ui.msg('✅ تم التحقق'); ui.ring('ok'); photo = snapshot(v); await sleep(300); return { ok: true, photo, distance: best }; }
+        ui.msg(matched ? '👁️ ارمش مرة وحدة' : 'جاري التعرف…'); ui.bar(30 + Math.min(60, el / 150));
+        await sleep(30);
       }
       return { ok: false, reason: 'cancel' };
     } finally { stopCam(); ui.close(); }
+  }
+  function avg2(a, b) { const o = new Float32Array(128); for (let i = 0; i < 128; i++) o[i] = (a[i] + b[i]) / 2; return o; }
+  async function detectLoose(v) {
+    const r = await faceapi.detectSingleFace(v, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.35 })).withFaceLandmarks().withFaceDescriptor();
+    if (!r) return null;
+    const box = r.detection.box, m = Math.min(v.videoWidth, v.videoHeight), lm = r.landmarks;
+    return { score: r.detection.score, size: box.width / m, ear: (ear(lm.getLeftEye()) + ear(lm.getRightEye())) / 2, desc: r.descriptor };
   }
 
   // تسجيل وجه موظف جديد (5 صور من زوايا مختلفة)
@@ -123,14 +127,14 @@
     try {
       for (let i = 0; i < steps.length && !cancelFlag; i++) {
         ui.msg(steps[i]); ui.bar((i / steps.length) * 100);
-        await sleep(900);
+        await sleep(600);
         let stable = 0;
         while (!cancelFlag) {
-          const d = await detect(v);
-          const p = placement(d);
-          if (p || d.score < 0.7) { ui.msg(p || steps[i]); ui.ring('warn'); stable = 0; await sleep(60); continue; }
+          const d = await detectLoose(v);
+          const p = !d ? 'ضع وجهك داخل الدائرة' : d.size < 0.16 ? 'اقترب من الكاميرا قليلاً' : null;
+          if (p || d.score < 0.5) { ui.msg(p || steps[i]); ui.ring('warn'); stable = 0; await sleep(50); continue; }
           ui.msg(steps[i]); ui.ring('ok'); stable++;
-          if (stable >= 3) { descs.push(Array.from(d.desc, x => Math.round(x * 1e5) / 1e5)); if (i === 0) photo = snapshot(v); break; }
+          if (stable >= 2) { descs.push(Array.from(d.desc, x => Math.round(x * 1e5) / 1e5)); if (i === 0) photo = snapshot(v); break; }
           await sleep(60);
         }
       }

@@ -214,7 +214,7 @@
       if (!res.ok) {
         if (res.reason === 'cancel') return;
         if (res.photo) { const pid = 'fail_' + uid(); await api.savePhoto(pid, res.photo); audit('محاولة بصمة فاشلة', `${emp.name} (${type === 'in' ? 'حضور' : 'انصراف'})`, { photoId: pid, empId: emp.id }); }
-        await popup({ icon: '🚫', title: 'الوجه غير مطابق', text: res.reason === 'timeout' ? 'انتهى الوقت ولم يتم التحقق.<small>تأكد من الإضاءة وضع وجهك داخل الدائرة ثم حاول مرة أخرى</small>' : 'الوجه غير مطابق لبيانات هذا الموظف.<small>لم يتم تسجيل البصمة</small>', kind: 'bad' });
+        await popup({ icon: '🚫', title: 'الوجه غير مطابق', text: res.reason === 'timeout' ? 'ما ظهر وجهك بالكاميرا.<small>تأكد من الإضاءة وضع وجهك داخل الدائرة ثم حاول مرة أخرى</small>' : res.reason === 'noblink' ? 'ما انقرت الرمشة.<small>ارمش ببطء مرة وحدة، أو الأدمن يطفي طلب الرمشة من الإعدادات</small>' : 'الوجه غير مطابق لبيانات هذا الموظف.<small>لم يتم تسجيل البصمة</small>', kind: 'bad' });
         return;
       }
 
@@ -631,7 +631,7 @@
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="sBig" ${s.bigReminder ? 'checked' : ''}> تنبيه كبير عند نهاية الدوام (يتكرر كل 10 دقائق لمدة ساعة)</label></div>
 
         <div class="card"><h3>بصمة الوجه</h3>
-          <label class="switch"><input type="checkbox" id="sLive" ${s.liveness ? 'checked' : ''}> فحص الحياة (يطلب رمشة العين — يمنع البصمة بصورة موبايل)</label>
+          <label class="switch"><input type="checkbox" id="sLive" ${s.liveness ? 'checked' : ''}> طلب رمشة العين (حماية إضافية من البصمة بصورة موبايل — يخلي البصمة أبطأ)</label>
           <div class="field" style="margin-top:12px"><label>دقة المطابقة</label><select id="sStrict">
             <option value="low" ${s.strictness === 'low' ? 'selected' : ''}>متساهلة (إضاءة ضعيفة)</option>
             <option value="medium" ${s.strictness === 'medium' ? 'selected' : ''}>متوسطة (موصى بها)</option>
@@ -810,6 +810,7 @@
     for (const k of ['employees', 'punches', 'days', 'audit']) d[k] = d[k] || {};
     d.settings = d.settings || {};
     d.settings.main = Object.assign({ id: 'main' }, L.DEFAULT_SETTINGS, d.settings.main || {});
+    if (!d.settings.main.easyV2) { d.settings.main.liveness = false; d.settings.main.easyV2 = true; }  // البصمة السهلة افتراضياً
     d.meta = Object.assign({ dirty: {}, lastSrv: 0, offset: 0 }, d.meta || {});
     d.local = Object.assign({ deviceName: '', cloud: {} }, d.local || {});
     return d;

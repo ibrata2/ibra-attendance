@@ -7,7 +7,7 @@
   const DEFAULT_SETTINGS = {
     graceIn: 30, graceOut: 15, autoCloseHours: 2,
     dedLate: 20000, dedAbsence: 40000, dedEarly: 20000, dedForgot: 10000,
-    halfAbsenceRule: true, liveness: true, strictness: 'medium',
+    halfAbsenceRule: true, liveness: false, strictness: 'medium',
     preReminder: true, bigReminder: true, currency: 'د.ع'
   };
 

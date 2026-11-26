@@ -1,6 +1,6 @@
 {
   "name": "ibra-attendance",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "بصمة IBRA - حضور وانصراف الموظفين ببصمة الوجه",
   "main": "main.js",
   "scripts": {
