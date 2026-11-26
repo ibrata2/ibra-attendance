@@ -67,7 +67,9 @@
     }
 
     r.lateMin = Math.max(0, Math.round((inP.ts - b.start) / M));
-    const outTs = outP ? outP.ts : (adj.manualOut ? atMin(date, hm(adj.manualOut) + (hm(adj.manualOut) < hm(emp.start) && b.overnight ? 1440 : 0)) : null);
+    const autoOut = !!(outP && outP.flags && outP.flags.auto);
+    const manualTs = adj.manualOut ? atMin(date, hm(adj.manualOut) + (hm(adj.manualOut) < hm(emp.start) && b.overnight ? 1440 : 0)) : null;
+    const outTs = (autoOut && manualTs) ? manualTs : outP ? outP.ts : manualTs;
 
     if (off) {
       r.status = 'offwork';
@@ -92,7 +94,11 @@
         }
       } else r.status = late ? 'late' : 'present';
       if (late && r.status !== 'late') r.notes.push('متأخر');
-      if (!outP && adj.manualOut) r.notes.push('انصراف يدوي');
+      if ((!outP || autoOut) && adj.manualOut) r.notes.push('انصراف يدوي');
+      if (autoOut && !adj.manualOut) {
+        r.status = 'forgot'; r.notes.push('انصراف تلقائي — نسي البصمة');
+        if (adj.forgotPenalty) r.ded.forgot = st.dedForgot;
+      }
     } else {
       if (t > b.end + st.autoCloseHours * H) {
         r.status = 'forgot';

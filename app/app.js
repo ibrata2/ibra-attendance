@@ -495,7 +495,7 @@
     const n = []; if (p.flags?.suspect) n.push('⚠️ وقت غير مؤكد'); if (p.flags?.offDay) n.push('يوم عطلة');
     if (p.type === 'in' && p.lateMin > S().graceIn) n.push('متأخر ' + L.durText(p.lateMin)); if (p.flags?.early) n.push('مبكر ' + L.durText(p.flags.early));
     if (p.match) n.push('تطابق ' + p.match + '%');
-    if (p.reason) n.push('السبب: ' + p.reason); if (p.manual) n.push('✎ يدوي'); if (p.edited) n.push('✎ معدّل'); return n.join(' • ');
+    if (p.reason) n.push('السبب: ' + p.reason); if (p.manual) n.push('✎ يدوي'); if (p.flags?.auto) n.push('⏱️ انصراف تلقائي (نسي البصمة)'); if (p.edited) n.push('✎ معدّل'); return n.join(' • ');
   }
   function renderLog() {
     const list = logPunches().slice(0, 1500);
@@ -599,12 +599,12 @@
   function renderReview() {
     const items = reviewItems();
     $('reviewView').innerHTML = `<div class="page-head"><h1>حالات تحتاج مراجعة (${items.length})</h1></div>
-      <p style="color:var(--muted);margin-top:-8px">موظفين نسوا تسجيل الانصراف، أو بصمات بوقت حاسبة غير مؤكد. لا يُطبّق خصم النسيان إلا إذا اخترته أنت.</p>
+      <p style="color:var(--muted);margin-top:-8px">موظفين نسوا تسجيل الانصراف (تسجّل لهم انصراف تلقائي بوقت نهاية الدوام)، أو بصمات بوقت حاسبة غير مؤكد. لا يُطبّق خصم النسيان إلا إذا اخترته أنت.</p>
       <div class="card" style="padding:0;overflow:auto">${items.length ? `<table><thead><tr><th>الموظف</th><th>التاريخ</th><th>الحضور</th><th>نهاية الدوام</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>
       ${items.map(({ e, r, kind }) => `<tr><td><b>${esc(e.name)}</b></td><td>${esc(dayLabel(r.date))}</td><td>${L.timeText(r.inP.ts)}</td><td>${L.timeText(r.b.end)}</td>
         <td>${kind === 'forgot' ? '<span class="tag warn">نسي الانصراف</span>' : '<span class="tag warn">⚠️ وقت غير مؤكد</span>'}</td>
         <td class="row" style="justify-content:center">
-          ${kind === 'forgot' ? `<button class="btn green sm" data-q="${e.id}|${r.date}|end">انصراف بوقت نهاية الدوام</button><button class="btn danger sm" data-q="${e.id}|${r.date}|pen">تطبيق خصم النسيان</button>` : `<button class="btn green sm" data-q="${e.id}|${r.date}|ok">الوقت صحيح</button>`}
+          ${kind === 'forgot' ? `<button class="btn green sm" data-q="${e.id}|${r.date}|end">تأكيد الانصراف (بدون خصم)</button><button class="btn danger sm" data-q="${e.id}|${r.date}|pen">تطبيق خصم النسيان</button>` : `<button class="btn green sm" data-q="${e.id}|${r.date}|ok">الوقت صحيح</button>`}
           <button class="btn ghost sm" data-adj="${e.id}|${r.date}">تعديل مفصّل</button></td></tr>`).join('')}
       </tbody></table>` : '<div class="empty">✅ لا توجد حالات تحتاج مراجعة</div>'}</div>`;
     $('reviewView').querySelectorAll('[data-q]').forEach(b => b.onclick = () => {
@@ -636,8 +636,9 @@
         <div class="card"><h3>أوقات السماح والتنبيهات</h3><div class="grid g2">
           <div class="field"><label>سماح التأخير بالحضور (دقيقة)</label><input type="number" min="0" id="sGIn" value="${s.graceIn}"></div>
           <div class="field"><label>سماح الانصراف المبكر (دقيقة)</label><input type="number" min="0" id="sGOut" value="${s.graceOut}"></div>
-          <div class="field"><label>إغلاق اليوم كـ"نسي الانصراف" بعد (ساعة)</label><input type="number" min="1" max="12" id="sAuto" value="${s.autoCloseHours}"></div>
+          <div class="field"><label>انصراف تلقائي بعد نهاية الدوام بـ (ساعة)</label><input type="number" min="1" max="12" id="sAuto" value="${s.autoCloseHours}"></div>
         </div>
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="sAO" ${s.autoOut !== false ? 'checked' : ''}> انصراف تلقائي إذا نسي البصمة (بعد مدة الإغلاق أعلاه) + إبلاغ الإدارة</label>
         <label class="switch" style="margin-top:12px"><input type="checkbox" id="sInR" ${s.inReminder !== false ? 'checked' : ''}> تذكير الحضور (إشعار ببداية الدوام + تنبيه كبير إذا انتهى وقت السماح وما سجّل)</label>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="sPre" ${s.preReminder ? 'checked' : ''}> تنبيه صغير قبل نهاية الدوام بـ 10 دقائق</label>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="sBig" ${s.bigReminder ? 'checked' : ''}> تنبيه كبير عند نهاية الدوام (يتكرر كل 10 دقائق لمدة ساعة)</label></div>
@@ -707,7 +708,7 @@
       const rec = Object.assign({}, S(), {
         dedLate: n('sLate', s.dedLate), dedAbsence: n('sAbs', s.dedAbsence), dedEarly: n('sEarly', s.dedEarly), dedForgot: n('sForgot', s.dedForgot), currency: q('sCur').value.trim() || 'د.ع',
         halfAbsenceRule: q('sHalf').checked, graceIn: n('sGIn', 30), graceOut: n('sGOut', 15), autoCloseHours: Math.max(1, n('sAuto', 2)),
-        inReminder: q('sInR').checked, preReminder: q('sPre').checked, bigReminder: q('sBig').checked, liveness: q('sLive').checked, strictness: q('sStrict').value
+        autoOut: q('sAO').checked, inReminder: q('sInR').checked, preReminder: q('sPre').checked, bigReminder: q('sBig').checked, liveness: q('sLive').checked, strictness: q('sStrict').value
       });
       put('settings', rec);
       App.db.local.deviceName = q('sDev').value.trim() || 'حاسبة'; App.db.local.branch = q('sBranch').value.trim() || 'الفرع الرئيسي'; App.saveSoon();
@@ -882,7 +883,26 @@
       }
     }
   }
+  // انصراف تلقائي: إذا نسي الموظف البصمة ومرّ وقت الإغلاق (افتراضياً ساعتين) — يشتغل حتى بعد تشغيل الحاسبة لاحقاً
+  function autoClose() {
+    const t = now(), s = S(); let n = 0;
+    if (s.autoOut === false) return;
+    for (const e of employees()) {
+      for (let i = 0; i <= 7; i++) {
+        const d = L.addDays(L.dateStr(t), -i), r = L.dayInfo(e, d, t, ctx());
+        if (!r.inP || r.outP || r.adj.manualOut || r.status !== 'forgot') continue;
+        const id = 'auto_' + e.id + '_' + d;   // نفس الرقم بكل الحاسبات حتى ما يتكرر
+        if (App.db.punches[id] && !App.db.punches[id]._del) continue;
+        if (App.db.punches[id] && App.db.punches[id]._del) continue;   // الأدمن حذفه — لا نرجعه
+        put('punches', { id, empId: e.id, empName: e.name, date: d, type: 'out', ts: r.b.end, device: device(), branch: (r.inP && r.inP.branch) || branch(), hasPhoto: false, auto: true, flags: { auto: true }, reason: 'انصراف تلقائي — نسي تسجيل الانصراف' });
+        audit('انصراف تلقائي', `${e.name} — ${d}: نسي تسجيل الانصراف، تسجّل بوقت نهاية الدوام ${L.timeText(r.b.end)}`);
+        n++;
+      }
+    }
+    if (n) { api.notify('بصمة IBRA', `تم تسجيل انصراف تلقائي لـ ${n} ${n === 1 ? 'موظف' : 'حالات'} نسوا البصمة — بانتظار مراجعة الإدارة`); updateBadge(); }
+  }
   function tick() {
+    autoClose();
     const suspect = Sync.checkClock();
     $('clockWarn').classList.toggle('hidden', !(suspect && !Sync.hasTimeBase()));
     reminders(); updateBadge(); updatePunchButtons();

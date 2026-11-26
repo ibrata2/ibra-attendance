@@ -78,10 +78,11 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
     const d = new Date(p.ts);
     let body = `${p.branch || 'الفرع الرئيسي'} • الساعة ${L.timeText(p.ts)} • ${L.DAY_NAMES[d.getDay()]} ${L.dateStr(p.ts)}`;
     if (p.type === 'in' && p.lateMin > S().graceIn) body += ` • متأخر ${L.durText(p.lateMin)}`;
+    if (p.flags && p.flags.auto) return { title: `⏱️ ${empName(p)} — انصراف تلقائي`, body: `نسي تسجيل الانصراف • تسجّل بوقت نهاية الدوام ${L.timeText(p.ts)} • ${p.branch || 'الفرع الرئيسي'} • ${L.dateStr(p.ts)}` };
     return { title: `${p.type === 'in' ? '✅' : '👋'} ${empName(p)} ${p.type === 'in' ? 'سجّل حضور' : 'سجّل انصراف'}`, body };
   }
   async function notifyNew(fresh) {
-    const list = fresh.filter(x => x.srv > db.lastNotified && Date.now() - x.p.ts < 36 * 3600e3);
+    const list = fresh.filter(x => x.srv > db.lastNotified && Date.now() - x.p.ts < (x.p.flags && x.p.flags.auto ? 8 * 864e5 : 36 * 3600e3));
     if (fresh.length) db.lastNotified = Math.max(db.lastNotified, ...fresh.map(x => x.srv));
     if (!list.length || !db.notify) return;
     const last = list[list.length - 1].p, n = noteText(last);
@@ -205,7 +206,7 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
       const emp = db.employees[p.empId] || {};
       html += `<div class="feed"><img ${p.thumb || emp.photo ? 'data-photo' : ''} src="${p.thumb || emp.photo || 'icon.png'}">
         <div class="t"><b>${esc(empName(p))}</b>
-          <div class="sub">${p.type === 'in' ? '<span class="tag ok">حضور</span>' : '<span class="tag warn">انصراف</span>'} ${late ? `<span class="tag bad">متأخر ${L.durText(p.lateMin)}</span>` : ''} ${p.flags && p.flags.early ? `<span class="tag warn">مبكر ${L.durText(p.flags.early)}</span>` : ''}</div>
+          <div class="sub">${p.type === 'in' ? '<span class="tag ok">حضور</span>' : '<span class="tag warn">انصراف</span>'} ${late ? `<span class="tag bad">متأخر ${L.durText(p.lateMin)}</span>` : ''} ${p.flags && p.flags.early ? `<span class="tag warn">مبكر ${L.durText(p.flags.early)}</span>` : ''} ${p.flags && p.flags.auto ? '<span class="tag bad">⏱️ تلقائي — نسي البصمة</span>' : ''}</div>
           <div class="sub">📍 ${esc(p.branch || 'الفرع الرئيسي')}${p.manual ? ' • ✎ يدوي' : ''}${p.reason ? ' • ' + esc(p.reason) : ''}</div></div>
         <div class="tm">${L.timeText(p.ts)}</div></div>`;
     }
