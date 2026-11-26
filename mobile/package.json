@@ -1,10 +1,9 @@
 {
   "name": "ibra-attendance-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "بصمة IBRA — تطبيق المدير",
   "dependencies": {
-    "@capacitor/background-runner": "^2.1.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/ios": "^6.2.0",
     "@capacitor/local-notifications": "^6.1.0"

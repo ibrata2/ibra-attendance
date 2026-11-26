@@ -1,4 +1,5 @@
 // مدير بصمة IBRA — تطبيق الايفون
+window.addEventListener('error', (e) => { try { const t = document.getElementById('toast'); t.textContent = '⚠️ ' + (e.message || 'خطأ'); t.classList.remove('hidden'); } catch (x) {} });
 (function () {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -6,7 +7,6 @@
   const Cap = window.Capacitor;
   const native = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform());
   const LN = native ? Cap.registerPlugin('LocalNotifications') : null;
-  const BR = native ? Cap.registerPlugin('BackgroundRunner') : null;
 
   let db = load();
   let tab = 'live', branchFilter = 'all', salaryYm = L.dateStr(Date.now()).slice(0, 7), openEmp = null, busy = false, lastOk = 0, syncErr = '';
@@ -84,13 +84,9 @@
       try { await LN.schedule({ notifications: list.slice(-10).map(x => { const t = noteText(x.p); return { id: x.srv % 2000000000, title: t.title, body: t.body, threadIdentifier: 'punches' }; }) }); } catch (e) {}
     }
   }
-  function tellRunner(force) {
-    if (!BR || !db.cfg) return;
-    BR.dispatchEvent({ label: 'com.ibraprogram.attendance.manager.check', event: 'setConfig', details: { cfg: Object.assign({}, db.cfg, { notify: db.notify, graceIn: S().graceIn }), lastNotified: db.lastNotified, force: !!force } }).catch(() => {});
-  }
+  function tellRunner() {}
   async function askNotify() {
     if (LN) { try { await LN.requestPermissions(); } catch (e) {} }
-    if (BR) { try { await BR.requestPermissions({ apis: ['notifications'] }); } catch (e) {} }
   }
 
   // ===== الشاشات =====
@@ -190,7 +186,7 @@
     $('main').innerHTML = `
       <div class="card"><h3 style="margin-top:0;color:var(--gold2)">الإشعارات</h3>
         <label class="switch"><input type="checkbox" id="nt" ${db.notify ? 'checked' : ''}> إشعار بكل بصمة حضور وانصراف</label>
-        <p style="color:var(--muted);font-size:12.5px;line-height:1.7">الإشعار يوصل فوراً والتطبيق مفتوح. وبالخلفية الايفون يسمح بالفحص كل فترة (عادة كل 15 دقيقة أو أكثر). لا تسد التطبيق بالسحب للأعلى حتى يبقى يفحص.</p>
+        <p style="color:var(--muted);font-size:12.5px;line-height:1.7">الإشعار يوصل فوراً والتطبيق مفتوح أو بالخلفية لفترة قصيرة. من تفتح التطبيق يجيك إشعار بكل البصمات الجديدة اللي صارت.</p>
         <button class="btn ghost" id="testN">تجربة إشعار</button></div>
       <div class="card"><h3 style="margin-top:0;color:var(--gold2)">قفل التطبيق</h3>
         <div class="field"><label>رمز من 4 أرقام (اتركه فارغ لإلغاء القفل)</label><input id="pin" inputmode="numeric" maxlength="4" value="${db.pin ? '••••' : ''}"></div>

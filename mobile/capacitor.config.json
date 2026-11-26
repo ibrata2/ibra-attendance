@@ -3,16 +3,13 @@
   "appName": "مدير بصمة IBRA",
   "webDir": "www",
   "backgroundColor": "#0b0b0d",
-  "ios": { "contentInset": "never", "backgroundColor": "#0b0b0d" },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0b0b0d"
+  },
   "plugins": {
-    "LocalNotifications": { "iconColor": "#C9A84C" },
-    "BackgroundRunner": {
-      "label": "com.ibraprogram.attendance.manager.check",
-      "src": "runners/background.js",
-      "event": "checkPunches",
-      "repeat": true,
-      "interval": 15,
-      "autoStart": true
+    "LocalNotifications": {
+      "iconColor": "#C9A84C"
     }
   }
 }
