@@ -699,7 +699,7 @@
         </div>
 
         <div class="card" style="grid-column:1/-1"><h3>النسخ الاحتياطي</h3>
-          <p style="color:var(--muted);margin-top:0">البرنامج ياخذ نسخة تلقائية كل يوم (آخر 30 يوم) داخل مجلد البيانات.</p>
+          <p style="color:var(--muted);margin-top:0">النسخة تشمل كلشي: الموظفين ووجوههم، البصمات، الإعدادات، كلمة مرور الأدمن، وربط السحابة واسم الفرع. تكدر تنقلها لحاسبة ثانية وتسترجعها. البرنامج ياخذ نسخة تلقائية كل يوم (آخر 30 يوم) داخل مجلد البيانات.<br>⚠️ الملف بيه مفتاح الربط — لا تنشره.</p>
           <div class="row"><button class="btn ghost" id="bExp">⬇ حفظ نسخة احتياطية</button><button class="btn ghost" id="bImp">⬆ استرجاع نسخة</button></div></div>
       </div>`;
     const q = (id) => $(id);
@@ -747,7 +747,20 @@
       const d = await api.importBackup(); if (!d) return;
       if (d.__error || !d.employees) return popup({ icon: '❌', title: 'ملف غير صالح', text: 'هذا الملف ليس نسخة احتياطية من البرنامج', kind: 'bad' });
       const ok = await popup({ icon: '⚠️', title: 'استرجاع نسخة', text: 'سيتم استبدال كل البيانات الحالية بالنسخة المختارة. متأكد؟', kind: 'warn', buttons: [{ label: 'استرجاع', value: true, cls: 'danger' }, { label: 'إلغاء', value: false, cls: 'ghost' }] });
-      if (!ok) return; const local = App.db.local; App.db = normalize(d); App.db.local = local; markAllDirty(); await App.save(); toast('تم الاسترجاع'); renderSettings();
+      if (!ok) return;
+      // النسخة تشمل كلشي: الموظفين، البصمات، الإعدادات، كلمة المرور، وربط السحابة واسم الفرع والحاسبة
+      const cur = App.db.local, bl = (d.local || {});
+      App.db = normalize(d);
+      App.db.local = Object.assign({}, cur, bl, { cloud: (bl.cloud && bl.cloud.url) ? bl.cloud : (cur.cloud || {}) });
+      delete App.db.local.updAsked;
+      App.db.meta = Object.assign(App.db.meta, { lastSrv: 0, dirty: {}, clockSuspect: false });
+      markAllDirty(); await App.save(); renderSync();
+      const linked = !!(App.db.local.cloud && App.db.local.cloud.url);
+      await popup({ icon: '✅', title: 'تم الاسترجاع', kind: 'ok',
+        text: `تم استرجاع <b>${employees(true).length}</b> موظف و<b>${Object.keys(App.db.punches).length}</b> بصمة مع كل الإعدادات.<br>${linked ? '☁️ ورجع الربط بالسحابة — جاري المزامنة' : '💾 النسخة ما بيها ربط سحابة (البرنامج يعمل أوفلاين)'}`,
+        sub: `الفرع: ${esc(App.db.local.branch || 'الفرع الرئيسي')} • الحاسبة: ${esc(App.db.local.deviceName || '')} — إذا هاي حاسبة ثانية غيّر اسمها من "هذه الحاسبة"` });
+      if (linked) Sync.run(true);
+      renderSettings();
     };
   }
   function markAllDirty() { for (const coll of ['employees', 'punches', 'days', 'settings', 'audit']) for (const id in (App.db[coll] || {})) Sync.markDirty(coll, id); }
