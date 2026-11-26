@@ -133,6 +133,7 @@ ipcMain.handle('alert:close', (e) => { const w = BrowserWindow.fromWebContents(e
 ipcMain.handle('alert:action', (e, action) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (w) w.close();
   if (action && action.startsWith('punch-out:')) { showMain(); win.webContents.send('quick-punch', { type: 'out', empId: action.slice(10) }); }
+  if (action && action.startsWith('punch-in:')) { showMain(); win.webContents.send('quick-punch', { type: 'in', empId: action.slice(9) }); }
   return true;
 });
 ipcMain.handle('notify', (e, title, body) => {

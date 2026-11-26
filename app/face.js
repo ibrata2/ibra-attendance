@@ -2,7 +2,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   let loaded = false, loading = null, stream = null, cancelFlag = false;
-  const THRESH = { low: 0.6, medium: 0.54, high: 0.46 };
+  const THRESH = { low: 0.5, medium: 0.45, high: 0.4 };
 
   async function init() {
     if (loaded) return;
@@ -70,7 +70,8 @@
     return c.toDataURL('image/jpeg', 0.78);
   }
 
-  // التحقق من هوية الموظف — سريع: يقارن كل لقطة مباشرة، والرمشة اختيارية
+  // التحقق من هوية الموظف — دقيق وسريع:
+  // 1) لازم 3 لقطات متتالية واضحة كلها مطابقة  2) متوسطها تحت الحد  3) الوجه أقرب لهذا الموظف من أي موظف ثاني
   async function verify(emp, opts) {
     cancelFlag = false;
     ui.open(`التحقق من الوجه — ${emp.name}`);
@@ -79,30 +80,33 @@
     try { v = await startCam(); } catch (e) { ui.close(); throw new Error('لا يمكن تشغيل الكاميرا. تأكد أنها موصولة وغير مستخدمة من برنامج آخر.'); }
     const thr = THRESH[opts.strictness] || THRESH.medium;
     const known = (emp.descriptors || []).map(d => Float32Array.from(d));
+    const others = (opts.others || []).filter(o => o.id !== emp.id && o.descriptors && o.descriptors.length).map(o => ({ name: o.name, ds: o.descriptors.map(d => Float32Array.from(d)) }));
     const t0 = performance.now();
-    let best = 9, photo = null, hits = 0, maxEar = 0, closed = false, blinked = !opts.liveness, matched = false, lastDesc = null;
-    ui.msg('ضع وجهك داخل الدائرة'); ui.bar(15);
+    let best = 9, photo = null, run = [], maxEar = 0, closed = false, blinked = !opts.liveness, lastWho = null;
+    ui.msg('ضع وجهك داخل الدائرة وانظر للكاميرا'); ui.bar(15);
     try {
       while (!cancelFlag) {
         const el = performance.now() - t0;
-        if (el > 15000) return { ok: false, reason: matched ? 'noblink' : (best < 9 ? 'nomatch' : 'timeout'), best, photo };
+        if (el > 15000) return { ok: false, reason: run.length && !blinked ? 'noblink' : (best < 9 ? 'nomatch' : 'timeout'), best, photo, who: lastWho };
         const d = await detectLoose(v);
-        if (!d) { ui.msg('ضع وجهك داخل الدائرة'); ui.ring('warn'); hits = 0; await sleep(40); continue; }
-        if (d.size < 0.16) { ui.msg('اقترب من الكاميرا قليلاً'); ui.ring('warn'); await sleep(40); continue; }
-        if (!photo || d.score > 0.75) photo = snapshot(v);
-        // المطابقة: أقرب مسافة لأي صورة مسجلة، مع متوسط آخر لقطتين
-        const probe = lastDesc ? avg2(lastDesc, d.desc) : d.desc; lastDesc = d.desc;
-        const dmin = Math.min(...known.map(k => euclid(k, d.desc)), ...known.map(k => euclid(k, probe)));
-        best = Math.min(best, dmin);
-        if (dmin < thr) { hits++; ui.ring('ok'); } else { hits = Math.max(0, hits - 1); ui.ring(''); }
-        if (hits >= 1) matched = true;
+        if (!d) { ui.msg('ضع وجهك داخل الدائرة'); ui.ring('warn'); run = []; await sleep(40); continue; }
+        if (d.size < 0.18) { ui.msg('اقترب من الكاميرا قليلاً'); ui.ring('warn'); run = []; await sleep(40); continue; }
+        if (d.score < 0.6) { ui.msg('انظر مباشرة للكاميرا'); ui.ring('warn'); run = []; await sleep(40); continue; }
+        if (!photo || d.score > 0.8) photo = snapshot(v);
+        const dist = Math.min(...known.map(k => euclid(k, d.desc)));
+        best = Math.min(best, dist);
+        // هل الوجه أقرب لموظف ثاني؟
+        let other = null;
+        for (const o of others) { const od = Math.min(...o.ds.map(k => euclid(k, d.desc))); if (od < dist + 0.03 && od < thr + 0.05) { other = o; break; } }
+        if (dist < thr && !other) { run.push(dist); ui.ring('ok'); } else { run = []; ui.ring(dist < thr ? 'bad' : ''); if (other) lastWho = other.name; }
         if (opts.liveness && !blinked) {
           maxEar = Math.max(maxEar * 0.995, d.ear);
           if (d.ear < maxEar * 0.78) closed = true; else if (closed && d.ear > maxEar * 0.88) blinked = true;
         }
-        if (matched && blinked) { ui.bar(100); ui.msg('✅ تم التحقق'); ui.ring('ok'); photo = snapshot(v); await sleep(300); return { ok: true, photo, distance: best }; }
-        ui.msg(matched ? '👁️ ارمش مرة وحدة' : 'جاري التعرف…'); ui.bar(30 + Math.min(60, el / 150));
-        await sleep(30);
+        const n = run.length, mean = n ? run.reduce((x, y) => x + y, 0) / n : 9;
+        if (n >= 3 && mean < thr - 0.02 && blinked) { ui.bar(100); ui.msg('✅ تم التحقق'); ui.ring('ok'); photo = snapshot(v); await sleep(250); return { ok: true, photo, distance: mean }; }
+        ui.msg(n && !blinked && n >= 3 ? '👁️ ارمش مرة وحدة' : 'جاري التعرف… ثبّت وجهك'); ui.bar(30 + n * 20);
+        await sleep(25);
       }
       return { ok: false, reason: 'cancel' };
     } finally { stopCam(); ui.close(); }
@@ -132,9 +136,9 @@
         while (!cancelFlag) {
           const d = await detectLoose(v);
           const p = !d ? 'ضع وجهك داخل الدائرة' : d.size < 0.16 ? 'اقترب من الكاميرا قليلاً' : null;
-          if (p || d.score < 0.5) { ui.msg(p || steps[i]); ui.ring('warn'); stable = 0; await sleep(50); continue; }
+          if (p || d.score < 0.7) { ui.msg(p || steps[i]); ui.ring('warn'); stable = 0; await sleep(50); continue; }
           ui.msg(steps[i]); ui.ring('ok'); stable++;
-          if (stable >= 2) { descs.push(Array.from(d.desc, x => Math.round(x * 1e5) / 1e5)); if (i === 0) photo = snapshot(v); break; }
+          if (stable >= 3) { descs.push(Array.from(d.desc, x => Math.round(x * 1e5) / 1e5)); if (i === 0) photo = snapshot(v); break; }
           await sleep(60);
         }
       }

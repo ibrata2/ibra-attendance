@@ -209,19 +209,19 @@
 
       // التحقق من الوجه
       let res;
-      try { res = await Face.verify(emp, { liveness: S().liveness, strictness: S().strictness }); }
+      try { res = await Face.verify(emp, { liveness: S().liveness, strictness: S().strictness, others: employees(true) }); }
       catch (e) { await popup({ icon: '📷', title: 'مشكلة بالكاميرا', text: esc(e.message), kind: 'bad' }); return; }
       if (!res.ok) {
         if (res.reason === 'cancel') return;
-        if (res.photo) { const pid = 'fail_' + uid(); await api.savePhoto(pid, res.photo); audit('محاولة بصمة فاشلة', `${emp.name} (${type === 'in' ? 'حضور' : 'انصراف'})`, { photoId: pid, empId: emp.id }); }
-        await popup({ icon: '🚫', title: 'الوجه غير مطابق', text: res.reason === 'timeout' ? 'ما ظهر وجهك بالكاميرا.<small>تأكد من الإضاءة وضع وجهك داخل الدائرة ثم حاول مرة أخرى</small>' : res.reason === 'noblink' ? 'ما انقرت الرمشة.<small>ارمش ببطء مرة وحدة، أو الأدمن يطفي طلب الرمشة من الإعدادات</small>' : 'الوجه غير مطابق لبيانات هذا الموظف.<small>لم يتم تسجيل البصمة</small>', kind: 'bad' });
+        if (res.photo) { const pid = 'fail_' + uid(); await api.savePhoto(pid, res.photo); audit('محاولة بصمة فاشلة', `بكود ${emp.name} (${type === 'in' ? 'حضور' : 'انصراف'})${res.who ? ' — الوجه يشبه ' + res.who : ''}`, { photoId: pid, empId: emp.id }); }
+        await popup({ icon: '🚫', title: 'الوجه غير مطابق', text: res.reason === 'timeout' ? 'ما ظهر وجهك بالكاميرا.<small>تأكد من الإضاءة وضع وجهك داخل الدائرة ثم حاول مرة أخرى</small>' : res.reason === 'noblink' ? 'ما انقرت الرمشة.<small>ارمش ببطء مرة وحدة، أو الأدمن يطفي طلب الرمشة من الإعدادات</small>' : (res.who ? `هذا الوجه مو وجه ${esc(emp.name)}.` : 'الوجه غير مطابق لبيانات هذا الموظف.') + '<small>لم يتم تسجيل البصمة — وانحفظت صورة المحاولة عند الإدارة</small>', kind: 'bad' });
         return;
       }
 
       // إعادة الحساب بالوقت الفعلي بعد التحقق
       const t2 = now(), sd2 = L.currentShiftDate(emp, t2, S()), b = L.shiftBounds(emp, sd2), off = L.isOff(emp, sd2);
       const suspect = !!App.db.meta.clockSuspect && !Sync.hasTimeBase();
-      const p = { id: uid(), empId: emp.id, empName: emp.name, date: sd2, type, ts: t2, device: device(), branch: branch(), hasPhoto: true, flags: {} };
+      const p = { id: uid(), empId: emp.id, empName: emp.name, date: sd2, type, ts: t2, device: device(), branch: branch(), hasPhoto: true, match: Math.round((1 - res.distance) * 100), flags: {} };
       if (suspect) p.flags.suspect = true;
       if (off) p.flags.offDay = true;
 
@@ -343,10 +343,20 @@
             <span>الراتب</span><span class="money">${money(e.salary)}</span>
             <span>بصمة الوجه</span><span>${e.descriptors && e.descriptors.length ? '<span class="tag ok">مسجلة ✓</span>' : '<span class="tag bad">غير مسجلة</span>'}</span>
           </div>
-          <div class="row"><button class="btn ghost sm" data-edit="${e.id}">تعديل</button><button class="btn ghost sm" data-face="${e.id}">📷 إعادة تسجيل الوجه</button><span class="spacer"></span><button class="btn danger sm" data-del="${e.id}">حذف</button></div>
+          <div class="row"><button class="btn ghost sm" data-edit="${e.id}">تعديل</button><button class="btn ghost sm" data-face="${e.id}">📷 إعادة تسجيل الوجه</button><button class="btn ghost sm" data-test="${e.id}">🧪 تجربة</button><span class="spacer"></span><button class="btn danger sm" data-del="${e.id}">حذف</button></div>
         </div>`).join('')}</div>` : '<div class="empty">لا يوجد موظفين بعد. اضغط "إضافة موظف" للبدء.</div>'}`;
     $('addEmp').onclick = () => editEmployee(null);
     $('empView').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editEmployee(App.db.employees[b.dataset.edit]));
+    $('empView').querySelectorAll('[data-test]').forEach(b => b.onclick = async () => {
+      const e = App.db.employees[b.dataset.test];
+      if (!e.descriptors) return popup({ icon: '📷', title: 'سجّل الوجه أولاً', text: 'هذا الموظف ما عنده بصمة وجه', kind: 'warn' });
+      let r; try { r = await Face.verify(e, { liveness: false, strictness: S().strictness, others: employees(true) }); } catch (er) { return popup({ icon: '📷', title: 'مشكلة بالكاميرا', text: esc(er.message), kind: 'bad' }); }
+      if (r.reason === 'cancel') return;
+      const pct = Math.max(0, Math.round((1 - (r.ok ? r.distance : r.best)) * 100));
+      popup({ icon: r.ok ? '✅' : '🚫', title: r.ok ? 'مطابق — تجربة فقط' : 'غير مطابق', kind: r.ok ? 'ok' : 'bad',
+        text: `نسبة التطابق مع <b>${esc(e.name)}</b>: <b style="font-size:26px">${r.best < 9 || r.ok ? pct + '%' : '—'}</b>${r.who ? `<br>الوجه أقرب للموظف <b>${esc(r.who)}</b>` : ''}`,
+        sub: `المطلوب للقبول: ${Math.round((1 - ({ low: 0.5, medium: 0.45, high: 0.4 }[S().strictness] || 0.45) + 0.02) * 100)}% أو أكثر بـ 3 لقطات متتالية • ما ينسجل أي حضور` });
+    });
     $('empView').querySelectorAll('[data-face]').forEach(b => b.onclick = () => reEnroll(App.db.employees[b.dataset.face]));
     $('empView').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const e = App.db.employees[b.dataset.del];
@@ -484,6 +494,7 @@
   function punchNotes(p) {
     const n = []; if (p.flags?.suspect) n.push('⚠️ وقت غير مؤكد'); if (p.flags?.offDay) n.push('يوم عطلة');
     if (p.type === 'in' && p.lateMin > S().graceIn) n.push('متأخر ' + L.durText(p.lateMin)); if (p.flags?.early) n.push('مبكر ' + L.durText(p.flags.early));
+    if (p.match) n.push('تطابق ' + p.match + '%');
     if (p.reason) n.push('السبب: ' + p.reason); if (p.manual) n.push('✎ يدوي'); if (p.edited) n.push('✎ معدّل'); return n.join(' • ');
   }
   function renderLog() {
@@ -627,15 +638,16 @@
           <div class="field"><label>سماح الانصراف المبكر (دقيقة)</label><input type="number" min="0" id="sGOut" value="${s.graceOut}"></div>
           <div class="field"><label>إغلاق اليوم كـ"نسي الانصراف" بعد (ساعة)</label><input type="number" min="1" max="12" id="sAuto" value="${s.autoCloseHours}"></div>
         </div>
-        <label class="switch" style="margin-top:12px"><input type="checkbox" id="sPre" ${s.preReminder ? 'checked' : ''}> تنبيه صغير قبل نهاية الدوام بـ 10 دقائق</label>
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="sInR" ${s.inReminder !== false ? 'checked' : ''}> تذكير الحضور (إشعار ببداية الدوام + تنبيه كبير إذا انتهى وقت السماح وما سجّل)</label>
+        <label class="switch" style="margin-top:8px"><input type="checkbox" id="sPre" ${s.preReminder ? 'checked' : ''}> تنبيه صغير قبل نهاية الدوام بـ 10 دقائق</label>
         <label class="switch" style="margin-top:8px"><input type="checkbox" id="sBig" ${s.bigReminder ? 'checked' : ''}> تنبيه كبير عند نهاية الدوام (يتكرر كل 10 دقائق لمدة ساعة)</label></div>
 
         <div class="card"><h3>بصمة الوجه</h3>
           <label class="switch"><input type="checkbox" id="sLive" ${s.liveness ? 'checked' : ''}> طلب رمشة العين (حماية إضافية من البصمة بصورة موبايل — يخلي البصمة أبطأ)</label>
           <div class="field" style="margin-top:12px"><label>دقة المطابقة</label><select id="sStrict">
-            <option value="low" ${s.strictness === 'low' ? 'selected' : ''}>متساهلة (إضاءة ضعيفة)</option>
+            <option value="low" ${s.strictness === 'low' ? 'selected' : ''}>متساهلة (أسهل — أقل أمان)</option>
             <option value="medium" ${s.strictness === 'medium' ? 'selected' : ''}>متوسطة (موصى بها)</option>
-            <option value="high" ${s.strictness === 'high' ? 'selected' : ''}>صارمة</option></select></div></div>
+            <option value="high" ${s.strictness === 'high' ? 'selected' : ''}>صارمة (أصعب — أكثر أمان)</option></select></div></div>
 
         <div class="card"><h3>هذه الحاسبة</h3>
           <div class="grid g2"><div class="field"><label>اسم الفرع (يظهر بإشعارات تطبيق المدير)</label><input id="sBranch" value="${esc(App.db.local.branch || '')}" placeholder="الفرع الرئيسي"></div>
@@ -695,7 +707,7 @@
       const rec = Object.assign({}, S(), {
         dedLate: n('sLate', s.dedLate), dedAbsence: n('sAbs', s.dedAbsence), dedEarly: n('sEarly', s.dedEarly), dedForgot: n('sForgot', s.dedForgot), currency: q('sCur').value.trim() || 'د.ع',
         halfAbsenceRule: q('sHalf').checked, graceIn: n('sGIn', 30), graceOut: n('sGOut', 15), autoCloseHours: Math.max(1, n('sAuto', 2)),
-        preReminder: q('sPre').checked, bigReminder: q('sBig').checked, liveness: q('sLive').checked, strictness: q('sStrict').value
+        inReminder: q('sInR').checked, preReminder: q('sPre').checked, bigReminder: q('sBig').checked, liveness: q('sLive').checked, strictness: q('sStrict').value
       });
       put('settings', rec);
       App.db.local.deviceName = q('sDev').value.trim() || 'حاسبة'; App.db.local.branch = q('sBranch').value.trim() || 'الفرع الرئيسي'; App.saveSoon();
@@ -782,8 +794,17 @@
     const t = now(), s = S();
     for (const e of employees()) {
       const sd = L.currentShiftDate(e, t, s), r = L.dayInfo(e, sd, t, ctx());
-      if (!r.inP || r.outP || r.adj.manualOut || r.off && false) continue;
       const k = e.id + sd, b = r.b;
+      // تذكير الحضور: بداية الدوام + بعد انتهاء وقت السماح
+      if (!r.inP && !r.off && !r.adj.leave && s.inReminder !== false && !['na'].includes(r.status)) {
+        if (t >= b.start && t < b.start + 5 * MIN && !shown[k + 'in0']) { shown[k + 'in0'] = 1; api.notify('بصمة IBRA', `بدأ دوام ${e.name} — يرجى تسجيل الحضور`); }
+        const g = b.start + s.graceIn * MIN;
+        if (t >= g && t < g + 30 * MIN && !shown[k + 'in1']) {
+          shown[k + 'in1'] = 1;
+          api.showAlert({ kind: 'in', title: 'لم يتم تسجيل الحضور', name: e.name, empId: e.id, msg: `دوام ${e.name} بدأ الساعة ${L.timeText(b.start)} وانتهى وقت السماح — أي تسجيل الآن يُحسب تأخير`, photo: e.photo || null, repeat: 0 });
+        }
+      }
+      if (!r.inP || r.outP || r.adj.manualOut) continue;
       if (s.preReminder && t >= b.end - 10 * MIN && t < b.end && !shown[k + 'pre']) {
         shown[k + 'pre'] = 1; api.notify('بصمة IBRA', `باقي 10 دقائق على نهاية دوام ${e.name}`);
       }
