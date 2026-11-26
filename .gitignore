@@ -5,3 +5,4 @@ mobile/ios/
 mobile/build/
 mobile/Payload/
 *.ipa
+main.bundle.js

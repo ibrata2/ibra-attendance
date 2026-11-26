@@ -159,7 +159,8 @@ ipcMain.handle('excel:export', async (e, payload) => {
     title: 'حفظ التقرير', defaultPath: path.join(app.getPath('documents'), filename),
     filters: [{ name: 'Excel', extensions: ['xlsx'] }]
   });
-  if (res.canceled || !res.filePath) return { ok: false };
+  if (res.canceled || !res.filePath) return { ok: false, canceled: true };
+  try {
   const ExcelJS = require('exceljs');
   const wb = new ExcelJS.Workbook();
   wb.creator = 'بصمة IBRA';
@@ -203,6 +204,10 @@ ipcMain.handle('excel:export', async (e, payload) => {
   await wb.xlsx.writeFile(res.filePath);
   shell.showItemInFolder(res.filePath);
   return { ok: true, path: res.filePath };
+  } catch (er) {
+    const busy = /EBUSY|EPERM|EACCES/.test(String(er && er.code));
+    return { ok: false, error: busy ? 'الملف مفتوح ببرنامج Excel أو المجلد محمي — سد الملف أو اختار مكان ثاني' : 'تعذر حفظ الملف: ' + (er && er.message || er) };
+  }
 });
 
 // نسخ احتياطي يدوي واستيراد

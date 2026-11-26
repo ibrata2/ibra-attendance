@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm install
+      - run: npm run bundle
       - run: npx electron-builder --win dir --x64 --publish never
       - name: بناء المثبّت (NSIS)
         shell: pwsh
@@ -71,6 +72,7 @@ jobs:
             **بصمة IBRA** — حضور وانصراف الموظفين ببصمة الوجه
             - `IBRA-Attendance-Setup-*.exe` برنامج الحاسبة (ويندوز)
             - `IBRA-Attendance-Manager.ipa` تطبيق المدير للايفون (يتوقع على الجهاز)
+            - إصلاح حفظ ملف Excel بالويندوز
             - استرجاع النسخة الاحتياطية يرجّع كل شي: الإعدادات وربط السحابة واسم الفرع والحاسبة
             - انصراف تلقائي إذا نسي الموظف البصمة (حتى لو انطفت الحاسبة) + إشعار للمدير بالايفون
             - تحديث داخلي: من قسم "حول" يفحص ويحمّل ويثبّت الإصدار الجديد بموافقة المستخدم

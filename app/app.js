@@ -580,7 +580,8 @@
       filename = `سجل-التعديلات-${repState.from}-${repState.to}.xlsx`;
     }
     const r = await api.exportExcel({ filename: filename.replace(/[\\/:*?"<>|]/g, '-'), sheets });
-    if (r.ok) toast('تم حفظ ملف Excel');
+    if (r.ok) toast('✅ تم حفظ ملف Excel');
+    else if (!r.canceled) popup({ icon: '❌', title: 'ما انحفظ ملف Excel', text: esc(r.error || 'خطأ غير معروف'), kind: 'bad' });
   }
 
   // ================= المراجعة =================
