@@ -1,5 +1,5 @@
 // بصمة IBRA — العملية الرئيسية
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, nativeImage, Notification, screen, shell, session, protocol, net } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, nativeImage, Notification, screen, shell, session, protocol, net, clipboard } = require('electron');
 const { pathToFileURL } = require('url');
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 const path = require('path');
@@ -147,6 +147,7 @@ ipcMain.handle('app:autostart', (e, on) => {
   return true;
 });
 ipcMain.handle('open:external', (e, url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return true; });
+ipcMain.handle('clipboard:write', (e, t) => { clipboard.writeText(String(t)); return true; });
 ipcMain.handle('qr:make', async (e, text) => require('qrcode').toDataURL(String(text), { errorCorrectionLevel: 'M', margin: 2, width: 420, color: { dark: '#000000', light: '#ffffff' } }));
 ipcMain.handle('open:dataDir', () => { shell.openPath(DATA_DIR()); return true; });
 

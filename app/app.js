@@ -706,7 +706,7 @@
     q('sPw').onclick = () => setPassword(false);
     q('sDir').onclick = () => api.openDataDir();
     q('cGen').onclick = () => { q('cWs').value = 'IBRA-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(); };
-    q('cSql').onclick = async () => { await navigator.clipboard.writeText(Sync.SQL); toast('تم نسخ كود SQL'); };
+    q('cSql').onclick = async () => { await api.copy(Sync.SQL); toast('✅ تم نسخ كود SQL — الصقه بـ SQL Editor بموقع Supabase واضغط Run'); };
     q('cTest').onclick = async () => {
       const cfg = { url: q('cUrl').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key: q('cKey').value.replace(/\s+/g, ''), ws: q('cWs').value.trim() };
       if (/^sb_secret_/.test(cfg.key)) { q('cMsg').textContent = '❌ هذا المفتاح السري — استخدم المفتاح العام (publishable أو anon)'; return; }
@@ -724,7 +724,7 @@
     if (c.url) {
       const code = 'IBRA1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ url: c.url, key: c.key, ws: c.ws }))));
       api.makeQR(code).then(u => { if ($('mgrQR')) $('mgrQR').src = u; });
-      q('mgrCopy').onclick = async () => { await navigator.clipboard.writeText(code); toast('تم نسخ كود الربط'); };
+      q('mgrCopy').onclick = async () => { await api.copy(code); toast('تم نسخ كود الربط'); };
     }
     q('cOff').onclick = async () => {
       if (!(await popup({ icon: '⚠️', title: 'إلغاء الربط', text: 'البرنامج يرجع يشتغل أوفلاين على هذي الحاسبة بس، وتطبيق المدير يوقف يوصله جديد. البيانات تبقى محفوظة.', kind: 'warn', buttons: [{ label: 'إلغاء الربط', value: true, cls: 'danger' }, { label: 'رجوع', value: false, cls: 'ghost' }] }))) return;

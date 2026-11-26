@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   openExternal: (u) => inv('open:external', u),
   openDataDir: () => inv('open:dataDir'),
   makeQR: (t) => inv('qr:make', t),
+  copy: (t) => inv('clipboard:write', t),
   exportExcel: (p) => inv('excel:export', p),
   exportBackup: (o) => inv('backup:export', o),
   importBackup: () => inv('backup:import'),
