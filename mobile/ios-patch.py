@@ -8,8 +8,8 @@ t = open(px).read(); t = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET = [\d.]+;', 'IPHONE
 p = 'ios/App/App/Info.plist'
 with open(p, 'rb') as f: d = plistlib.load(f)
 d['CFBundleDisplayName'] = 'مدير بصمة IBRA'
-d['CFBundleShortVersionString'] = '1.0.1'
-d['CFBundleVersion'] = '2'
+d['CFBundleShortVersionString'] = '1.0.2'
+d['CFBundleVersion'] = '3'
 d['ITSAppUsesNonExemptEncryption'] = False
 d['UIUserInterfaceStyle'] = 'Dark'
 d['NSAppTransportSecurity'] = {'NSAllowsArbitraryLoads': False}

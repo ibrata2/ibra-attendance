@@ -6,7 +6,12 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
   const KEY = 'ibra_mgr_v1';
   const Cap = window.Capacitor;
   const native = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform());
-  const LN = native ? Cap.registerPlugin('LocalNotifications') : null;
+  let LN = null;
+  try {
+    const reg = (window.capacitorExports && window.capacitorExports.registerPlugin) || (Cap && Cap.registerPlugin);
+    if (native && reg) LN = reg('LocalNotifications');
+    else if (native && Cap.Plugins && Cap.Plugins.LocalNotifications) LN = Cap.Plugins.LocalNotifications;
+  } catch (e) { LN = null; }
 
   let db = load();
   let tab = 'live', branchFilter = 'all', salaryYm = L.dateStr(Date.now()).slice(0, 7), openEmp = null, busy = false, lastOk = 0, syncErr = '';
