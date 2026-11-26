@@ -19,8 +19,11 @@ contextBridge.exposeInMainWorld('api', {
   openDataDir: () => inv('open:dataDir'),
   makeQR: (t) => inv('qr:make', t),
   copy: (t) => inv('clipboard:write', t),
+  updCheck: () => inv('update:check'),
+  updDownload: () => inv('update:download'),
+  updInstall: () => inv('update:install'),
   exportExcel: (p) => inv('excel:export', p),
   exportBackup: (o) => inv('backup:export', o),
   importBackup: () => inv('backup:import'),
-  on: (ch, fn) => { const ok = ['navigate', 'request-quit', 'quick-punch']; if (ok.includes(ch)) ipcRenderer.on(ch, (e, d) => fn(d)); }
+  on: (ch, fn) => { const ok = ['navigate', 'request-quit', 'quick-punch', 'update-progress']; if (ok.includes(ch)) ipcRenderer.on(ch, (e, d) => fn(d)); }
 });

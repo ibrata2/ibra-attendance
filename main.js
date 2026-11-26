@@ -218,6 +218,51 @@ ipcMain.handle('backup:import', async () => {
   try { return JSON.parse(fs.readFileSync(res.filePaths[0], 'utf8')); } catch (er) { return { __error: true }; }
 });
 
+
+// ---------- التحديث الداخلي ----------
+const UPDATE_API = 'https://api.github.com/repos/ibrata2/ibra-attendance/releases/latest';
+let updInfo = null, updFile = null;
+function verGt(a, b) { const x = String(a).replace(/^v/, '').split('.').map(Number), y = String(b).replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; }
+ipcMain.handle('update:check', async () => {
+  try {
+    const res = await net.fetch(UPDATE_API, { headers: { 'User-Agent': 'IBRA-Attendance', Accept: 'application/vnd.github+json' } });
+    if (!res.ok) return { ok: false, error: 'تعذر الاتصال بخادم التحديثات (' + res.status + ')' };
+    const d = await res.json();
+    const ver = String(d.tag_name || '').replace(/^v/, '');
+    const asset = (d.assets || []).find(a => /Setup.*\.exe$/i.test(a.name));
+    updInfo = asset ? { version: ver, url: asset.browser_download_url, size: asset.size, name: asset.name, notes: d.body || '' } : null;
+    return { ok: true, current: app.getVersion(), latest: ver, available: !!asset && verGt(ver, app.getVersion()), size: asset ? asset.size : 0, notes: d.body || '' };
+  } catch (e) { return { ok: false, error: 'ما كو إنترنت أو الخادم ما يستجيب' }; }
+});
+ipcMain.handle('update:download', async (e) => {
+  if (!updInfo) return { ok: false, error: 'افحص التحديثات أولاً' };
+  const target = path.join(app.getPath('temp'), updInfo.name);
+  try {
+    if (fs.existsSync(target) && fs.statSync(target).size === updInfo.size) { updFile = target; return { ok: true }; }
+    const res = await net.fetch(updInfo.url, { headers: { 'User-Agent': 'IBRA-Attendance' } });
+    if (!res.ok || !res.body) return { ok: false, error: 'فشل التحميل (' + res.status + ')' };
+    const total = Number(res.headers.get('content-length')) || updInfo.size, out = fs.createWriteStream(target + '.part');
+    let got = 0, lastSent = 0; const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      got += value.length; if (!out.write(Buffer.from(value))) await new Promise(r => out.once('drain', r));
+      if (Date.now() - lastSent > 250) { lastSent = Date.now(); e.sender.send('update-progress', { got, total }); }
+    }
+    await new Promise(r => out.end(r));
+    if (total && fs.statSync(target + '.part').size !== total) return { ok: false, error: 'التحميل ناقص — حاول مرة ثانية' };
+    fs.renameSync(target + '.part', target);
+    e.sender.send('update-progress', { got: total, total });
+    updFile = target; return { ok: true };
+  } catch (er) { return { ok: false, error: 'انقطع التحميل — تأكد من الإنترنت وحاول مرة ثانية' }; }
+});
+ipcMain.handle('update:install', () => {
+  if (!updFile || !fs.existsSync(updFile)) return false;
+  const { spawn } = require('child_process');
+  spawn(updFile, ['/S', '/UPDATE'], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+  quitting = true; setTimeout(() => app.quit(), 400);
+  return true;
+});
+
 // ---------- التشغيل ----------
 app.on('second-instance', () => showMain('punch'));
 app.whenReady().then(() => {

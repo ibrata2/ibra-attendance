@@ -780,13 +780,78 @@
     $('aboutView').innerHTML = `<div class="about">
       <img src="icon.png"><h1>بصمة IBRA</h1><p style="color:var(--muted)">برنامج حضور وانصراف الموظفين ببصمة الوجه</p>
       <p style="font-size:18px">برمجة وتطوير <b style="color:var(--gold2)">ابراهيم الخزرجي</b></p>
+      <div class="card upd" style="text-align:right">
+        <h3>🔄 التحديثات</h3>
+        <div class="row"><span>الإصدار الحالي: <b id="uCur">—</b></span><span class="spacer"></span><button class="btn" id="uCheck">فحص التحديثات</button></div>
+        <div id="uMsg" style="margin-top:10px;color:var(--muted)"></div>
+        <div id="uBarWrap" class="hidden" style="margin-top:10px"><div class="cam-progress" style="margin:0"><i id="uBar"></i></div><small id="uPct" style="color:var(--muted)"></small></div>
+        <div id="uActions" class="row hidden" style="margin-top:12px"></div>
+      </div>
       <div class="links">
         <div>🌐 موقع التطبيقات: <a data-url="https://ibraprogram.netlify.app/">ibraprogram.netlify.app</a></div>
         <div>✈️ تيليكرام: <a data-url="https://t.me/ibraprogram">t.me/ibraprogram</a></div>
         <div>🎵 تيك توك: <a data-url="https://www.tiktok.com/@ibraprogram">ibraprogram</a></div>
       </div></div>`;
     $('aboutView').querySelectorAll('[data-url]').forEach(a => a.onclick = () => api.openExternal(a.dataset.url));
+    api.info().then(i => { $('uCur').textContent = i.version; });
+    $('uCheck').onclick = () => checkUpdate(true);
+    if (upd.state) showUpd();
   }
+
+  // ================= التحديث الداخلي =================
+  const upd = { state: null, latest: '', size: 0, notes: '', err: '' };
+  const mb = (b) => (b / 1048576).toFixed(1) + ' ميغا';
+  function showUpd() {
+    if (!$('uMsg')) return;
+    const a = $('uActions'); a.classList.add('hidden'); a.innerHTML = '';
+    const set = (t) => { $('uMsg').innerHTML = t; };
+    if (upd.state === 'checking') set('⏳ جاري الفحص…');
+    else if (upd.state === 'none') set('✅ عندك آخر إصدار');
+    else if (upd.state === 'error') set('❌ ' + esc(upd.err));
+    else if (upd.state === 'available' || upd.state === 'ready') {
+      const notes = esc(upd.notes.replace(/\*\*/g, '').replace(/`/g, '')).split('\n').filter(l => /^\s*-/.test(l) && !/IBRA-Attendance|\.exe|\.ipa/i.test(l)).join('<br>');
+      set(`🎉 <b style="color:var(--gold2)">إصدار جديد ${esc(upd.latest)}</b> (${mb(upd.size)})${notes ? `<div style="margin-top:6px;font-size:13px">${notes}</div>` : ''}`);
+      a.classList.remove('hidden');
+      a.innerHTML = upd.state === 'ready' ? '<button class="btn green" id="uInst">تثبيت التحديث الآن</button><span style="color:var(--muted)">تم التحميل ✓</span>' : '<button class="btn" id="uDl">⬇ تحميل التحديث</button>';
+      if ($('uDl')) $('uDl').onclick = downloadUpdate;
+      if ($('uInst')) $('uInst').onclick = installUpdate;
+    }
+    $('uBarWrap').classList.toggle('hidden', upd.state !== 'downloading');
+    if (upd.state === 'downloading') set('⬇ جاري تحميل الإصدار ' + esc(upd.latest) + '…');
+  }
+  function aboutBadge(on) { const b = document.querySelector('#nav [data-tab=about]'); if (b) b.innerHTML = on ? 'حول <span class="badge">جديد</span>' : 'حول'; }
+  async function checkUpdate(manual) {
+    if (upd.state === 'downloading') return;
+    upd.state = 'checking'; showUpd();
+    const r = await api.updCheck();
+    if (!r.ok) { upd.state = manual ? 'error' : null; upd.err = r.error; showUpd(); return; }
+    if (!r.available) { upd.state = manual ? 'none' : null; aboutBadge(false); showUpd(); return; }
+    Object.assign(upd, { state: upd.state === 'ready' && upd.latest === r.latest ? 'ready' : 'available', latest: r.latest, size: r.size, notes: r.notes });
+    aboutBadge(true); showUpd();
+    if (!manual && App.db.local.updAsked !== r.latest) {
+      App.db.local.updAsked = r.latest; App.saveSoon();
+      const ok = await popup({ icon: '🔄', title: 'تحديث جديد متوفر', text: `الإصدار <b>${esc(r.latest)}</b> صار متوفر (عندك ${esc(r.current)}).<br>تريد تحمّله الآن؟`, sub: 'التحميل بالخلفية والبرنامج يبقى شغال', kind: 'ok', buttons: [{ label: 'تحميل', value: true }, { label: 'لاحقاً', value: false, cls: 'ghost' }] });
+      if (ok) downloadUpdate();
+    }
+  }
+  async function downloadUpdate() {
+    upd.state = 'downloading'; showUpd();
+    const r = await api.updDownload();
+    if (!r.ok) { upd.state = 'error'; upd.err = r.error; showUpd(); return; }
+    upd.state = 'ready'; showUpd();
+    const ok = await popup({ icon: '✅', title: 'تم تحميل التحديث', text: `الإصدار <b>${esc(upd.latest)}</b> جاهز.<br>تثبّته الآن؟`, sub: 'البرنامج يتسكر ثواني ويرجع يشتغل تلقائياً — الموظفين والبصمات ما تتأثر', kind: 'ok', buttons: [{ label: 'تثبيت الآن', value: true }, { label: 'لاحقاً', value: false, cls: 'ghost' }] });
+    if (ok) installUpdate();
+  }
+  async function installUpdate() {
+    if (!(await ensureAdmin())) return;
+    await App.save();
+    toast('⏳ جاري التثبيت… البرنامج يرجع يشتغل بعد ثواني');
+    setTimeout(() => api.updInstall(), 600);
+  }
+  api.on('update-progress', ({ got, total }) => {
+    const p = total ? Math.round(got / total * 100) : 0;
+    if ($('uBar')) { $('uBar').style.width = p + '%'; $('uPct').textContent = `${p}% — ${mb(got)} من ${mb(total)}`; }
+  });
 
   // ================= التنبيهات الدورية =================
   const shown = {};
@@ -855,6 +920,7 @@
     Sync.run(true);
     setInterval(() => Sync.run(), 60000);
     tick(); setInterval(tick, 20000);
+    setTimeout(() => checkUpdate(false), 20000); setInterval(() => checkUpdate(false), 6 * 3600e3);
     $('codeInput').focus();
   }
   document.addEventListener('DOMContentLoaded', boot);

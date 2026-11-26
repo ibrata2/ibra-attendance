@@ -58,6 +58,12 @@ Section "Install"
   WriteRegDWORD HKCU "${REGKEY}" "NoRepair" 1
 SectionEnd
 
+Function .onInstSuccess
+  ; بعد التحديث الصامت يرجع البرنامج يشتغل تلقائياً
+  IfSilent 0 +2
+  Exec '"$INSTDIR\${EXE}"'
+FunctionEnd
+
 Section "Uninstall"
   nsExec::Exec 'taskkill /F /IM "${EXE}"'
   Sleep 800
