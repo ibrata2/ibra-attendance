@@ -109,26 +109,89 @@ window.addEventListener('error', (e) => { try { const t = document.getElementByI
   function bindPhotos() { document.querySelectorAll('[data-photo]').forEach(im => im.onclick = () => { const o = document.createElement('div'); o.className = 'overlay'; o.innerHTML = `<img src="${im.src}">`; o.onclick = () => o.remove(); document.body.appendChild(o); }); }
 
   function renderSetup() {
-    $('main').innerHTML = `<div class="card" style="margin-top:20px">
-      <div class="about"><img src="icon.png"><h2 style="color:var(--gold2)">ربط تطبيق المدير</h2></div>
-      <p style="color:var(--muted);line-height:1.8">من برنامج البصمة على الحاسبة: الإعدادات ← الربط بالسحابة ← زر <b>"كود ربط تطبيق المدير"</b>. انسخ الكود وأرسله للايفون والصقه هنا.</p>
-      <div class="field"><label>كود الربط</label><textarea id="code" rows="4" dir="ltr" placeholder="IBRA1:..."></textarea></div>
-      <button class="btn" id="link">ربط</button><p id="err" style="color:var(--bad)"></p></div>`;
-    $('link').onclick = async () => {
-      const raw = $('code').value.trim();
-      try {
-        if (!raw.startsWith('IBRA1:')) throw 0;
-        const c = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6).trim()))));
-        if (!c.url || !c.key || !c.ws) throw 0;
-        $('err').textContent = ''; $('link').textContent = 'جاري الربط…';
-        const t = await fetch(c.url.replace(/\/+$/, '') + '/rest/v1/att_sync?select=id&limit=1', { headers: { apikey: c.key, Authorization: 'Bearer ' + c.key } });
-        if (!t.ok) throw new Error('تعذر الاتصال بالسحابة');
-        db = Object.assign(blank(), { cfg: c, notify: true }); save();
-        await askNotify();
-        await pull(true); tellRunner(true);
-        toast('تم الربط ✅'); tab = 'live'; render();
-      } catch (e) { $('err').textContent = (e && e.message) || 'الكود غير صحيح'; $('link').textContent = 'ربط'; }
+    $('main').innerHTML = `<div class="card" style="margin-top:8px">
+      <div class="about"><img src="icon.png"><h2 style="color:var(--gold2);margin:10px 0 4px">ربط تطبيق المدير</h2>
+      <p style="color:var(--muted);margin:0 0 14px">اربط مرة وحدة بس، وبعدها يوصلك سجل الحضور من كل الفروع</p></div>
+      <button class="btn" id="scan" style="font-size:18px;padding:16px">📷 مسح رمز الربط</button>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" id="pick">🖼️ من صورة</button><button class="btn ghost" id="pasteShow">⌨️ لصق الكود</button></div>
+      <div id="pasteBox" class="hidden" style="margin-top:12px"><div class="field"><textarea id="code" rows="4" dir="ltr" placeholder="IBRA1:..."></textarea></div><button class="btn" id="link">ربط</button></div>
+      <input type="file" id="file" accept="image/*" class="hidden">
+      <p id="err" style="color:var(--bad);text-align:center"></p></div>
+      <div class="card"><h3 style="margin:0 0 8px;color:var(--gold2)">📖 طريقة الربط</h3>
+        <ol class="steps">
+          <li>على الحاسبة افتح برنامج <b>بصمة IBRA</b> ← <b>الإعدادات</b>.</li>
+          <li>لازم البرنامج يكون <b>مربوط بالسحابة</b> (قسم ☁️ الربط بالسحابة — بيه شرح كامل). بدون ربط البرنامج يشتغل أوفلاين على الحاسبة بس.</li>
+          <li>بقسم <b>📱 ربط تطبيق المدير</b> يطلع مربع QR.</li>
+          <li>هنا اضغط <b>📷 مسح رمز الربط</b> ووجّه الكاميرا على المربع.</li>
+          <li>وافق على الإشعارات — يوصلك إشعار بكل بصمة حضور وانصراف مع اسم الموظف والفرع والوقت.</li>
+        </ol>
+        <p style="color:var(--muted);font-size:12.5px;margin:0">الكاميرا ما تشتغل؟ صوّر المربع واختار <b>من صورة</b>، أو انسخ الكود من الحاسبة واختار <b>لصق الكود</b>.</p></div>`;
+    $('scan').onclick = () => startScan();
+    $('pasteShow').onclick = () => { $('pasteBox').classList.toggle('hidden'); $('code').focus(); };
+    $('link').onclick = () => linkWith($('code').value);
+    $('pick').onclick = () => $('file').click();
+    $('file').onchange = async () => {
+      const f = $('file').files[0]; if (!f) return;
+      const img = new Image(); img.src = URL.createObjectURL(f);
+      await img.decode().catch(() => {});
+      const txt = decodeFromSource(img, img.naturalWidth, img.naturalHeight);
+      if (txt) linkWith(txt); else $('err').textContent = 'ما لكيت رمز QR بالصورة — صوّره أقرب وبوضوح';
+      $('file').value = '';
     };
+  }
+  function decodeFromSource(src, w, h) {
+    if (!w || !h) return null;
+    const max = 1000, k = Math.min(1, max / Math.max(w, h));
+    const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(src, 0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height);
+    const r = window.jsQR && jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' });
+    return r && r.data ? r.data : null;
+  }
+  let scanStream = null;
+  async function startScan() {
+    const ov = document.createElement('div'); ov.className = 'scan';
+    ov.innerHTML = `<video id="sv" playsinline autoplay muted></video><div class="scan-frame"></div>
+      <div class="scan-msg" id="smsg">وجّه الكاميرا على رمز QR بشاشة الحاسبة</div><button class="btn ghost scan-x" id="sx">إلغاء</button>`;
+    document.body.appendChild(ov);
+    let done = false;
+    const stop = () => { done = true; if (scanStream) scanStream.getTracks().forEach(t => t.stop()); scanStream = null; ov.remove(); };
+    ov.querySelector('#sx').onclick = stop;
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+    } catch (e) {
+      stop(); $('err').textContent = 'ما كدرنا نفتح الكاميرا. من إعدادات الايفون ← مدير بصمة IBRA ← فعّل الكاميرا، أو استخدم "من صورة".'; return;
+    }
+    const v = ov.querySelector('#sv'); v.srcObject = scanStream; await v.play().catch(() => {});
+    const loop = () => {
+      if (done) return;
+      if (v.readyState >= 2) {
+        const txt = decodeFromSource(v, v.videoWidth, v.videoHeight);
+        if (txt) {
+          if (txt.startsWith('IBRA1:')) { if (navigator.vibrate) navigator.vibrate(80); stop(); linkWith(txt); return; }
+          ov.querySelector('#smsg').textContent = 'هذا مو رمز ربط بصمة IBRA';
+        }
+      }
+      setTimeout(loop, 180);
+    };
+    loop();
+  }
+  async function linkWith(raw) {
+    raw = String(raw || '').trim();
+    $('err').textContent = '';
+    try {
+      if (!raw.startsWith('IBRA1:')) throw new Error('الكود غير صحيح');
+      let c; try { c = JSON.parse(decodeURIComponent(escape(atob(raw.slice(6).trim())))); } catch (e) { throw new Error('الكود غير صحيح'); }
+      if (!c.url || !c.key || !c.ws) throw new Error('الكود ناقص');
+      toast('⏳ جاري الربط…');
+      const t = await fetch(c.url.replace(/\/+$/, '') + '/rest/v1/att_sync?select=id&limit=1', { headers: { apikey: c.key, Authorization: 'Bearer ' + c.key } }).catch(() => null);
+      if (!t) throw new Error('ما كو إنترنت — تأكد من الاتصال وجرب مرة ثانية');
+      if (!t.ok) throw new Error('تعذر الاتصال بالسحابة (' + t.status + ')');
+      db = Object.assign(blank(), { cfg: c, notify: true }); save();
+      await askNotify();
+      await pull(true);
+      toast('✅ تم الربط — ' + emps().length + ' موظف'); tab = 'live'; render();
+    } catch (e) { if ($('err')) $('err').textContent = e.message || 'الكود غير صحيح'; toast('❌ ' + (e.message || 'فشل الربط')); }
   }
 
   function renderLive() {

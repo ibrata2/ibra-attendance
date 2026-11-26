@@ -5,7 +5,7 @@ ManifestDPIAware true
 !define ARNAME "بصمة IBRA"
 !define EXE "IBRA-Attendance.exe"
 !ifndef VERSION
-!define VERSION "1.0.3"
+!define VERSION "1.0.6"
 !endif
 !define REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\IBRAAttendance"
 Name "${ARNAME}"

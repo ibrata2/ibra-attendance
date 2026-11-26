@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   setAutostart: (on) => inv('app:autostart', on),
   openExternal: (u) => inv('open:external', u),
   openDataDir: () => inv('open:dataDir'),
+  makeQR: (t) => inv('qr:make', t),
   exportExcel: (p) => inv('excel:export', p),
   exportBackup: (o) => inv('backup:export', o),
   importBackup: () => inv('backup:import'),

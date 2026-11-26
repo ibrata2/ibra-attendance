@@ -153,3 +153,11 @@ code.sql{display:block;white-space:pre;direction:ltr;text-align:left;background:
 .tcell{display:flex;align-items:center;justify-content:center;gap:8px}
 .thumb.sm{width:34px;height:34px;border-radius:50%;border:2px solid var(--gold)}
 .thumb:hover{transform:scale(1.08)}
+.guide{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.guide>div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;line-height:1.8;font-size:14px}
+.steps{line-height:2;color:var(--text);padding-inline-start:22px;margin:8px 0}
+.steps li{margin-bottom:4px}
+.mgr-link{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.qrbox{background:#fff;border-radius:16px;padding:12px;text-align:center;width:244px}
+.qrbox img{width:220px;height:220px;display:block}
+.qrbox small{color:#333;font-size:12px}

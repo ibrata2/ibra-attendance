@@ -1,6 +1,6 @@
 {
   "name": "ibra-attendance",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "بصمة IBRA - حضور وانصراف الموظفين ببصمة الوجه",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,8 @@
   "author": "Ibrahim Al-Khazraji (IBRAPROGRAM)",
   "license": "UNLICENSED",
   "dependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@vladmandic/face-api": "^1.7.15",

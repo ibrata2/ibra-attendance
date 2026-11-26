@@ -644,17 +644,46 @@
           <div class="row" style="margin-top:12px"><button class="btn ghost" id="sPw">تغيير كلمة مرور الإدارة</button><button class="btn ghost" id="sDir">فتح مجلد البيانات</button></div>
           <small style="color:var(--muted)">الإصدار ${esc(info.version)}</small></div>
 
-        <div class="card" style="grid-column:1/-1"><h3>☁️ الربط بالسحابة (لربط أكثر من حاسبة)</h3>
-          <p style="color:var(--muted);margin-top:0">كل الحاسبات اللي تحط بيها نفس البيانات الثلاثة تشوف نفس الموظفين والبصمات والتقارير. إذا الإنترنت مقطوع البصمات تنحفظ وتترفع تلقائياً من يرجع.</p>
+        <div class="card" style="grid-column:1/-1"><h3>☁️ الربط بالسحابة — ${c.url ? '<span class="tag ok">مربوط ✓</span>' : '<span class="tag muted">غير مربوط (يعمل أوفلاين)</span>'}</h3>
+          <div class="guide">
+            <div><b>💾 بدون ربط (أوفلاين):</b> البرنامج يشتغل كامل على هذي الحاسبة بس — البصمة والتقارير والرواتب. ما يحتاج إنترنت أبداً.</div>
+            <div><b>☁️ بعد الربط (أونلاين):</b> البصمات تترفع لسحابة خاصة بيك، فتقدر تربط حاسبة ثانية أو فرع ثاني، وتشوف كل شي من تطبيق المدير على الايفون.</div>
+            <div><b>📴 إذا انقطع الإنترنت بعد الربط:</b> البصمة تبقى تشتغل عادي وتنحفظ بالحاسبة، وأول ما يرجع النت تترفع تلقائياً. ما يضيع أي تسجيل.</div>
+          </div>
           <div class="grid g3">
             <div class="field"><label>رابط المشروع (Project URL)</label><input id="cUrl" dir="ltr" value="${esc(c.url || '')}" placeholder="https://xxxx.supabase.co"></div>
             <div class="field"><label>المفتاح العام (anon public key)</label><input id="cKey" dir="ltr" type="password" value="${esc(c.key || '')}"></div>
             <div class="field"><label>كود المحل (نفسه بكل الحاسبات)</label><div class="row"><input id="cWs" dir="ltr" style="flex:1" value="${esc(c.ws || '')}"><button class="btn ghost sm" id="cGen">توليد</button></div></div>
           </div>
-          <div class="row" style="margin-top:12px"><button class="btn" id="cTest">اختبار الاتصال وحفظ</button><button class="btn ghost" id="cSync">مزامنة الآن</button><button class="btn ghost" id="cSql">📋 نسخ كود الإعداد (SQL)</button><button class="btn ghost" id="cOff">إلغاء الربط</button><button class="btn green" id="cMgr">📱 كود ربط تطبيق المدير</button>
+          <div class="row" style="margin-top:12px"><button class="btn" id="cTest">اختبار الاتصال وحفظ</button><button class="btn ghost" id="cSync">مزامنة الآن</button><button class="btn ghost" id="cSql">📋 نسخ كود الإعداد (SQL)</button><button class="btn ghost" id="cOff">إلغاء الربط</button>
             <span id="cMsg" style="color:var(--muted)"></span></div>
-          <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--gold)">طريقة الإعداد (مرة واحدة فقط)</summary>
-            <ol style="line-height:2;color:var(--muted)"><li>سوّي حساب مجاني بموقع supabase.com وأنشئ مشروع جديد.</li><li>من SQL Editor الصق الكود (زر النسخ أعلاه) واضغط Run.</li><li>من Project Settings ← API انسخ Project URL والمفتاح anon public والصقهم هنا.</li><li>اضغط "توليد" لكود المحل، واختبار الاتصال.</li><li>بالحاسبة الثانية حط نفس الرابط والمفتاح وكود المحل.</li></ol></details></div>
+          <details style="margin-top:12px" ${c.url ? '' : 'open'}><summary style="cursor:pointer;color:var(--gold)">📖 شرح الربط خطوة بخطوة (مرة وحدة بس — مجاني)</summary>
+            <ol class="steps">
+              <li>افتح موقع <b dir="ltr">supabase.com</b> وسوّي حساب مجاني (تكدر تدخل بحساب Google أو GitHub).</li>
+              <li>اضغط <b>New project</b>، اكتب أي اسم (مثلاً <span dir="ltr">ibra-attendance</span>) وكلمة مرور، واختار أقرب منطقة (مثلاً Frankfurt)، وانتظر دقيقتين لين يجهز.</li>
+              <li>ارجع للبرنامج واضغط زر <b>📋 نسخ كود الإعداد (SQL)</b>.</li>
+              <li>بموقع Supabase من القائمة الجانبية افتح <b>SQL Editor</b>، الصق الكود، واضغط <b>Run</b>. لازم تطلع <span dir="ltr">Success</span>.</li>
+              <li>افتح <b>Project Settings ← API</b> (أو زر <b>Connect</b>)، انسخ <b dir="ltr">Project URL</b> والصقه بالخانة الأولى، وانسخ المفتاح <b dir="ltr">anon public</b> والصقه بالخانة الثانية.</li>
+              <li>اضغط <b>توليد</b> جنب كود المحل، وبعدين <b>اختبار الاتصال وحفظ</b>. إذا طلع <b>✅ متصل ومتزامن</b> خلص الربط، وكل الموظفين والبصمات القديمة تترفع تلقائياً.</li>
+              <li><b>للحاسبة الثانية أو الفرع الثاني:</b> نصّب البرنامج، وحط نفس الرابط والمفتاح ونفس كود المحل، واكتب اسم الفرع بقسم "هذه الحاسبة". الموظفين يظهرون تلقائياً.</li>
+            </ol></details></div>
+
+        <div class="card" style="grid-column:1/-1"><h3>📱 ربط تطبيق المدير (الايفون)</h3>
+          ${c.url ? `<div class="mgr-link">
+            <div class="qrbox"><img id="mgrQR" alt=""><small>امسح هذا الرمز من تطبيق المدير</small></div>
+            <div style="flex:1">
+              <ol class="steps">
+                <li>افتح تطبيق <b>مدير بصمة IBRA</b> على الايفون.</li>
+                <li>اضغط <b>📷 مسح رمز الربط</b> ووافق على الكاميرا.</li>
+                <li>وجّه الكاميرا على المربع الأسود والأبيض — يرتبط مباشرة.</li>
+                <li>وافق على الإشعارات حتى يوصلك إشعار بكل بصمة.</li>
+              </ol>
+              <p style="color:var(--muted);font-size:13px">ما يشتغل المسح؟ دز الكود لنفسك والصقه بالتطبيق بدل المسح.</p>
+              <div class="row"><button class="btn ghost" id="mgrCopy">📋 نسخ كود الربط</button></div>
+              <p style="color:var(--warn);font-size:12.5px">⚠️ هذا الرمز يفتح سجل محلك — لا تنشره ولا تصوره لأحد.</p>
+            </div></div>`
+          : `<div class="guide"><div>🔒 تطبيق المدير يقرأ السجل من السحابة، فلازم <b>تربط البرنامج بالسحابة أولاً</b> (القسم أعلاه). بعد الربط يطلع هنا رمز QR تمسحه بالايفون ويرتبط مباشرة.</div></div>`}
+        </div>
 
         <div class="card" style="grid-column:1/-1"><h3>النسخ الاحتياطي</h3>
           <p style="color:var(--muted);margin-top:0">البرنامج ياخذ نسخة تلقائية كل يوم (آخر 30 يوم) داخل مجلد البيانات.</p>
@@ -687,22 +716,18 @@
         const changedWs = (App.db.local.cloud || {}).ws !== cfg.ws;
         App.db.local.cloud = cfg;
         if (changedWs) { App.db.meta.lastSrv = 0; markAllDirty(); }
-        App.save(); q('cMsg').textContent = '✅ تم الاتصال — جاري المزامنة'; await Sync.run(true); q('cMsg').textContent = '✅ متصل ومتزامن';
+        App.save(); q('cMsg').textContent = '✅ تم الاتصال — جاري المزامنة'; await Sync.run(true); q('cMsg').textContent = '✅ متصل ومتزامن'; setTimeout(renderSettings, 1200);
       } catch (e) { q('cMsg').textContent = '❌ ' + e.message; }
     };
     q('cSync').onclick = () => Sync.run(true);
-    q('cMgr').onclick = async () => {
-      const c2 = App.db.local.cloud || {};
-      if (!c2.url) return popup({ icon: '☁️', title: 'اربط السحابة أولاً', text: 'تطبيق المدير يقرأ السجل من السحابة، فلازم تربط البرنامج بالسحابة قبل.', kind: 'warn' });
-      if (!(await ensureAdmin())) return;
-      const code = 'IBRA1:' + btoa(unescape(encodeURIComponent(JSON.stringify(c2))));
-      const m = modal(`<h2>📱 كود ربط تطبيق المدير</h2><p style="color:var(--muted)">انسخ هذا الكود وأرسله لنفسك، وبتطبيق المدير على الايفون الصقه مرة وحدة.</p>
-        <textarea id="mgrCode" readonly style="width:100%;height:110px;direction:ltr;background:var(--bg2);color:var(--gold2);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px">${esc(code)}</textarea>
-        <div class="actions"><button class="btn" id="mgrCopy">نسخ الكود</button><button class="btn ghost" id="mgrClose">إغلاق</button></div>`);
-      m.box.querySelector('#mgrCopy').onclick = async () => { await navigator.clipboard.writeText(code); toast('تم نسخ الكود'); };
-      m.box.querySelector('#mgrClose').onclick = m.close;
-    };
-    q('cOff').onclick = () => { App.db.local.cloud = {}; App.save(); renderSync(); renderSettings(); Sync.run(); };
+    if (c.url) {
+      const code = 'IBRA1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ url: c.url, key: c.key, ws: c.ws }))));
+      api.makeQR(code).then(u => { if ($('mgrQR')) $('mgrQR').src = u; });
+      q('mgrCopy').onclick = async () => { await navigator.clipboard.writeText(code); toast('تم نسخ كود الربط'); };
+    }
+    q('cOff').onclick = async () => {
+      if (!(await popup({ icon: '⚠️', title: 'إلغاء الربط', text: 'البرنامج يرجع يشتغل أوفلاين على هذي الحاسبة بس، وتطبيق المدير يوقف يوصله جديد. البيانات تبقى محفوظة.', kind: 'warn', buttons: [{ label: 'إلغاء الربط', value: true, cls: 'danger' }, { label: 'رجوع', value: false, cls: 'ghost' }] }))) return;
+      App.db.local.cloud = {}; App.save(); renderSync(); renderSettings(); Sync.run(); };
     q('bExp').onclick = () => api.exportBackup(App.db);
     q('bImp').onclick = async () => {
       const d = await api.importBackup(); if (!d) return;

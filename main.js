@@ -147,6 +147,7 @@ ipcMain.handle('app:autostart', (e, on) => {
   return true;
 });
 ipcMain.handle('open:external', (e, url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return true; });
+ipcMain.handle('qr:make', async (e, text) => require('qrcode').toDataURL(String(text), { errorCorrectionLevel: 'M', margin: 2, width: 420, color: { dark: '#000000', light: '#ffffff' } }));
 ipcMain.handle('open:dataDir', () => { shell.openPath(DATA_DIR()); return true; });
 
 // تصدير Excel

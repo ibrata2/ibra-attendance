@@ -8,9 +8,11 @@ t = open(px).read(); t = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET = [\d.]+;', 'IPHONE
 p = 'ios/App/App/Info.plist'
 with open(p, 'rb') as f: d = plistlib.load(f)
 d['CFBundleDisplayName'] = 'مدير بصمة IBRA'
-d['CFBundleShortVersionString'] = '1.0.2'
-d['CFBundleVersion'] = '3'
+d['CFBundleShortVersionString'] = '1.0.3'
+d['CFBundleVersion'] = '4'
 d['ITSAppUsesNonExemptEncryption'] = False
+d['NSCameraUsageDescription'] = 'الكاميرا تستخدم لمسح رمز ربط برنامج البصمة'
+d['NSPhotoLibraryUsageDescription'] = 'لاختيار صورة رمز الربط'
 d['UIUserInterfaceStyle'] = 'Dark'
 d['NSAppTransportSecurity'] = {'NSAllowsArbitraryLoads': False}
 with open(p, 'wb') as f: plistlib.dump(d, f)
